@@ -1,0 +1,8 @@
+# arXiv API
+arxiv
+
+# HTTP requests
+requests
+
+# Utilities
+python-dotenv

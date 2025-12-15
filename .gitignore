@@ -1,0 +1,4 @@
+notebooks/.DS_Store
+__pycache__
+*.pdf
+notebooks/papers/*
