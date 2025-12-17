@@ -2,3 +2,6 @@ notebooks/.DS_Store
 __pycache__
 *.pdf
 notebooks/papers/*
+notebooks/downloads/*
+notebooks/experimentation.ipynb
+extracted_content/*

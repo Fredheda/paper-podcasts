@@ -4,5 +4,8 @@ arxiv
 # HTTP requests
 requests
 
+# PDF Processing
+markitdown[all]
+
 # Utilities
 python-dotenv
