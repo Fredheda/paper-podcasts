@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
 
@@ -31,7 +32,9 @@ class Paper:
 
     # Local processing metadata
     downloaded_at: Optional[datetime] = None
-    pdf_path: Optional[str] = None
+    save_dir: Optional[str] = None
+    pdf_filename: Optional[str] = None
+    metadata_filename: Optional[str] = None
     status: str = "new"  # new, downloaded, extracted, summarized, audio_generated
 
     def __post_init__(self):
@@ -55,6 +58,20 @@ class Paper:
         """Get the first author's name."""
         return self.authors[0].name if self.authors else "Unknown"
 
+    @property
+    def pdf_path(self) -> Optional[str]:
+        """Get the full path to the PDF file."""
+        if self.save_dir and self.pdf_filename:
+            return str(Path(self.save_dir) / self.pdf_filename)
+        return None
+
+    @property
+    def metadata_path(self) -> Optional[str]:
+        """Get the full path to the metadata file."""
+        if self.save_dir and self.metadata_filename:
+            return str(Path(self.save_dir) / self.metadata_filename)
+        return None
+
     def to_dict(self) -> dict:
         """Convert paper to dictionary for JSON serialization."""
         return {
@@ -71,13 +88,21 @@ class Paper:
             "journal_ref": self.journal_ref,
             "doi": self.doi,
             "downloaded_at": self.downloaded_at.isoformat() if self.downloaded_at else None,
+            "save_dir": self.save_dir,
+            "pdf_filename": self.pdf_filename,
+            "metadata_filename": self.metadata_filename,
             "pdf_path": self.pdf_path,
+            "metadata_path": self.metadata_path,
             "status": self.status,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "Paper":
         """Create Paper from dictionary."""
+        # Remove computed properties (they'll be automatically recreated)
+        data.pop("pdf_path", None)
+        data.pop("metadata_path", None)
+
         # Parse datetime strings
         data["published"] = datetime.fromisoformat(data["published"])
         data["updated"] = datetime.fromisoformat(data["updated"])

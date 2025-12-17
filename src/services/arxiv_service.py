@@ -1,13 +1,12 @@
 """Service for interacting with the arXiv API."""
 
+import json
 import time
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
-
+from typing import List
 import arxiv
-
 from ..models.paper import Paper, Author
 
 
@@ -39,6 +38,40 @@ class ArxivService:
             time.sleep(sleep_time)
 
         self.last_request_time = time.time()
+
+    @staticmethod
+    def _clean_filename(title: str, max_length: int = 200) -> str:
+        """
+        Clean a paper title for use as a filename.
+
+        Removes invalid filename characters and normalizes whitespace.
+
+        Args:
+            title: The paper title to clean
+            max_length: Maximum length for the filename (default: 200)
+
+        Returns:
+            Cleaned filename string
+
+        Examples:
+            "Attention Is All You Need" -> "Attention_Is_All_You_Need"
+            "A/B Testing: Methods" -> "A_B_Testing__Methods"
+            "What's Next?" -> "What_s_Next_"
+        """
+        # Remove invalid filename characters: / \ : * ? " < > |
+        invalid_chars = '/\\:*?"<>|'
+        cleaned = title
+        for char in invalid_chars:
+            cleaned = cleaned.replace(char, '_')
+
+        # Replace multiple spaces with single space, then spaces with underscores
+        cleaned = ' '.join(cleaned.split())
+        cleaned = cleaned.replace(' ', '_')
+
+        # Limit length to avoid filesystem issues
+        cleaned = cleaned[:max_length]
+
+        return cleaned
 
     def _arxiv_result_to_paper(self, result: arxiv.Result) -> Paper:
         """
@@ -121,49 +154,130 @@ class ArxivService:
         logger.info(f"Found {len(papers)} papers")
         return papers
 
-    def download_pdf(
+    def _download_pdf(
         self,
-        paper: Paper,
-        destination: Path,
-        filename: Optional[str] = None,
+        arxiv_id: str,
+        destination_dir: str,
+        filename: str,
     ) -> Path:
         """
-        Download a paper's PDF to the specified destination using arxiv library.
+        Internal method to download a PDF from arXiv.
 
         Args:
-            paper: The Paper object to download
+            arxiv_id: The arXiv ID of the paper
             destination: Directory to save the PDF
-            filename: Optional custom filename (defaults to "{arxiv_id}.pdf")
+            filename: Filename for the PDF
 
         Returns:
             Path to the downloaded PDF file
         """
-        destination = Path(destination)
-        destination.mkdir(parents=True, exist_ok=True)
 
-        if filename is None:
-            filename = f"{paper.arxiv_id}.pdf"
-
-        logger.info(f"Downloading PDF for {paper.arxiv_id} to {destination}")
+        logger.info(f"Downloading PDF for {arxiv_id} to {destination_dir}")
 
         self._rate_limit()
 
         try:
             # Search for the paper to get the arxiv.Result object
-            search = arxiv.Search(id_list=[paper.arxiv_id])
+            search = arxiv.Search(id_list=[arxiv_id])
             result = next(self.client.results(search))
 
             # Download using arxiv library's download_pdf method
-            output_path = result.download_pdf(dirpath=str(destination), filename=filename)
-
-            # Update paper metadata
-            paper.pdf_path = str(output_path)
-            paper.downloaded_at = datetime.now()
-            paper.status = "downloaded"
+            output_path = result.download_pdf(dirpath=str(destination_dir), filename=filename)
 
             logger.info(f"Successfully downloaded PDF to {output_path}")
             return Path(output_path)
 
         except Exception as e:
-            logger.error(f"Failed to download PDF for {paper.arxiv_id}: {e}")
+            logger.error(f"Failed to download PDF for {arxiv_id}: {e}")
             raise
+
+    def _save_metadata(
+        self,
+        paper: Paper,
+        destination_dir: str,
+        filename: str,
+    ) -> Path:
+        """
+        Internal method to save paper metadata to JSON.
+
+        Args:
+            paper: Paper object to save
+            destination_dir: Directory where metadata should be saved
+            filename: Filename for the metadata JSON
+
+        Returns:
+            Path to the saved metadata file
+        """
+        logger.info(f"Saving metadata for {paper.arxiv_id} to {destination_dir}")
+
+        try:
+            metadata_path = f"{destination_dir}/{filename}"
+
+            with open(metadata_path, "w", encoding="utf-8") as f:
+                json.dump(paper.to_dict(), f, indent=4)
+
+            logger.info(f"Successfully saved metadata to {metadata_path}")
+            return metadata_path
+
+        except Exception as e:
+            logger.error(f"Failed to save metadata for {paper.arxiv_id}: {e}")
+            raise
+
+    def download_and_save_metadata(
+        self,
+        paper: Paper,
+        destination_dir: str = "downloads",
+    ) -> tuple[Path, Path]:
+        """
+        Download PDF and save metadata with matching filenames.
+
+        This is a convenience method that ensures the PDF and metadata
+        files have matching names in the same directory.
+
+        Creates:
+        - {cleaned_title}.pdf
+        - {cleaned_title}.json
+
+        Args:
+            paper: Paper object to download and save
+            destination_dir: Directory for both PDF and metadata
+
+        Returns:
+            Tuple of (pdf_path, metadata_path)
+        """
+        destination_dir = Path(destination_dir)
+        destination_dir.mkdir(parents=True, exist_ok=True)
+
+        # Clean title for use as filename
+        base_filename = self._clean_filename(paper.title)
+
+        pdf_filename = f"{base_filename}.pdf"
+        metadata_filename = f"{base_filename}.json"
+
+        paper.save_dir = str(destination_dir)
+        paper.pdf_filename = pdf_filename
+        paper.metadata_filename = metadata_filename
+
+
+        paper.downloaded_at = datetime.now()
+        paper.status = "downloaded"
+
+        # Download PDF with specific filename
+        pdf_path = self._download_pdf(
+            paper.arxiv_id,
+            str(destination_dir),
+            pdf_filename
+        )
+
+        # Save metadata with matching filename
+        metadata_path = self._save_metadata(
+            paper,
+            str(destination_dir),
+            metadata_filename
+        )
+
+        logger.info(
+            f"Downloaded and saved metadata for {paper.title} to {destination_dir}"
+        )
+
+        return pdf_path, metadata_path
