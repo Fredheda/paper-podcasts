@@ -5,3 +5,4 @@ notebooks/papers/*
 notebooks/downloads/*
 notebooks/experimentation.ipynb
 extracted_content/*
+.env
