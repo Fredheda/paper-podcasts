@@ -9,3 +9,7 @@ markitdown[all]
 
 # Utilities
 python-dotenv
+
+# LLM Providers
+anthropic
+openai

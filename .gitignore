@@ -6,3 +6,10 @@ notebooks/downloads/*
 notebooks/experimentation.ipynb
 extracted_content/*
 .env
+requirements.txt
+notebooks/anthropic_experimentation.ipynb
+notebooks/audio/*
+notebooks/extracted_content/*
+notebooks/summaries/*
+src/services/llm_service.py
+summaries/*
