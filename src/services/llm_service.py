@@ -94,26 +94,32 @@ class LLMService:
         self,
         paper: Paper,
         extracted_content: str,
+        output_dir: str | Path,
         prompt_name: str = "summarize_paper",
         max_tokens: int = 4096,
         temperature: float = 0.7,
-    ) -> str:
+    ) -> "SummaryResult":
         """
-        Summarize a paper using the LLM.
+        Summarize a paper using LLM and save to disk.
 
         Args:
-            paper: Paper metadata object
-            extracted_content: Extracted paper content
-            prompt_name: Name of the prompt template to use
+            paper: Paper metadata
+            extracted_content: Extracted markdown content
+            output_dir: Directory where summary should be saved
+            prompt_name: Prompt template name
             max_tokens: Maximum tokens to generate
             temperature: Sampling temperature
 
         Returns:
-            Summary text from the LLM
+            SummaryResult with summary and metadata
         """
+        from datetime import datetime
+        from pathlib import Path
+        from ..models.summary_result import SummaryResult
+
         logger.info(f"Summarizing paper: {paper.title}")
 
-        # Load and format the prompt
+        # Load and format prompt
         prompt_template = self._load_prompt(prompt_name)
         formatted_prompt = self._format_prompt(
             prompt_template,
@@ -122,64 +128,31 @@ class LLMService:
         )
 
         # Generate summary
-        summary = self.provider.generate(
+        summary_text = self.provider.generate(
             prompt=formatted_prompt,
             max_tokens=max_tokens,
             temperature=temperature,
         )
 
-        logger.info(f"Generated summary ({len(summary)} characters) for: {paper.title}")
+        # Save to disk
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        return summary
+        # Determine filename from paper's PDF filename or arxiv_id
+        if hasattr(paper, 'pdf_filename') and paper.pdf_filename:
+            base_filename = Path(paper.pdf_filename).stem
+        else:
+            base_filename = paper.arxiv_id
 
-    def summarize_paper_from_files(
-        self,
-        paper: Paper,
-        extracted_content_path: str,
-        prompt_name: str = "summarize_paper",
-        max_tokens: int = 4096,
-        temperature: float = 0.7,
-        output_dir: Optional[str] = None,
-        filename: Optional[str] = None,
-    ) -> str:
-        """
-        Summarize a paper by loading extracted content from a file.
+        summary_filename = f"summary_{base_filename}.txt"
+        summary_path = output_dir / summary_filename
+        summary_path.write_text(summary_text, encoding="utf-8")
 
-        Args:
-            paper: Paper metadata object
-            extracted_content_path: Path to the extracted content markdown file
-            prompt_name: Name of the prompt template to use
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
-            output_dir: Optional directory to save the summary
-            filename: Optional filename for the saved summary
+        logger.info(f"Generated and saved summary to {summary_path}")
 
-        Returns:
-            Summary text from the LLM
-        """
-        logger.info(f"Loading extracted content from: {extracted_content_path}")
-
-        # Load extracted content
-        with open(extracted_content_path, "r", encoding="utf-8") as f:
-            markdown_content = f.read()
-
-        summary = self.summarize_paper(
-            paper=paper,
-            extracted_content=markdown_content,
-            prompt_name=prompt_name,
-            max_tokens=max_tokens,
-            temperature=temperature,
+        # Return result object
+        return SummaryResult(
+            summary_text=summary_text,
+            saved_path=summary_path,
+            summarized_at=datetime.now(),
         )
-
-        # Save summary if output directory is specified
-        if output_dir:
-            output_path = Path(output_dir)
-            output_path.mkdir(parents=True, exist_ok=True)
-
-            filename = f"summary_{paper.pdf_filename.split(".")[0]}.txt"
-
-            file_path = output_path / filename
-            file_path.write_text(summary, encoding="utf-8")
-            logger.info(f"Saved summary to: {file_path}")
-
-        return summary

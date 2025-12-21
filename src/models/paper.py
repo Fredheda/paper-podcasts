@@ -35,7 +35,7 @@ class Paper:
     save_dir: Optional[str] = None
     pdf_filename: Optional[str] = None
     metadata_filename: Optional[str] = None
-    status: str = "new"  # new, downloaded, extracted, summarized, audio_generated
+    status: str = "new"  # States: new, downloading, downloaded, extracting, extracted, summarizing, summarized, generating_audio, completed, failed
 
     def __post_init__(self):
         """Ensure arxiv_id is clean (without version number for storage)."""

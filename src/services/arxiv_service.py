@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List
 import arxiv
 from ..models.paper import Paper, Author
+from ..models.download_result import DownloadResult
 
 
 logger = logging.getLogger(__name__)
@@ -53,10 +54,6 @@ class ArxivService:
         Returns:
             Cleaned filename string
 
-        Examples:
-            "Attention Is All You Need" -> "Attention_Is_All_You_Need"
-            "A/B Testing: Methods" -> "A_B_Testing__Methods"
-            "What's Next?" -> "What_s_Next_"
         """
         # Remove invalid filename characters: / \ : * ? " < > |
         invalid_chars = '/\\:*?"<>|'
@@ -112,16 +109,12 @@ class ArxivService:
         Args:
             topic: The search topic (keywords, categories, etc.)
                    Examples: "machine learning", "cat:cs.AI", "quantum computing"
+            exact: If True, search for exact phrase and sort by relevance;
+                   If False, search broadly and sort by submission date
             max_results: Maximum number of results to return
-            sort_by_recent: If True, sort by most recent; otherwise by relevance
 
         Returns:
             List of Paper objects
-
-        Examples:
-            search_by_topic("machine learning", max_results=5)
-            search_by_topic("cat:cs.AI", max_results=10)
-            search_by_topic("transformers", sort_by_recent=False)
         """
         logger.info(f"Searching for papers on topic: '{topic}'")
 
@@ -165,7 +158,7 @@ class ArxivService:
 
         Args:
             arxiv_id: The arXiv ID of the paper
-            destination: Directory to save the PDF
+            destination_dir: Directory to save the PDF
             filename: Filename for the PDF
 
         Returns:
@@ -211,7 +204,7 @@ class ArxivService:
         logger.info(f"Saving metadata for {paper.arxiv_id} to {destination_dir}")
 
         try:
-            metadata_path = f"{destination_dir}/{filename}"
+            metadata_path = Path(destination_dir) / filename
 
             with open(metadata_path, "w", encoding="utf-8") as f:
                 json.dump(paper.to_dict(), f, indent=4)
@@ -227,7 +220,7 @@ class ArxivService:
         self,
         paper: Paper,
         destination_dir: str = "downloads",
-    ) -> tuple[Path, Path]:
+    ) -> DownloadResult:
         """
         Download PDF and save metadata with matching filenames.
 
@@ -239,14 +232,14 @@ class ArxivService:
         - {cleaned_title}.json
 
         Args:
-            paper: Paper object to download and save
+            paper: Paper object to download and save (not modified)
             destination_dir: Directory for both PDF and metadata
 
         Returns:
-            Tuple of (pdf_path, metadata_path)
+            DownloadResult with paths and metadata about the download
         """
-        destination_dir = Path(destination_dir)
-        destination_dir.mkdir(parents=True, exist_ok=True)
+        destination_path = Path(destination_dir)
+        destination_path.mkdir(parents=True, exist_ok=True)
 
         # Clean title for use as filename
         base_filename = self._clean_filename(paper.title)
@@ -254,30 +247,35 @@ class ArxivService:
         pdf_filename = f"{base_filename}.pdf"
         metadata_filename = f"{base_filename}.json"
 
-        paper.save_dir = str(destination_dir)
-        paper.pdf_filename = pdf_filename
-        paper.metadata_filename = metadata_filename
-
-
-        paper.downloaded_at = datetime.now()
-        paper.status = "downloaded"
-
         # Download PDF with specific filename
         pdf_path = self._download_pdf(
             paper.arxiv_id,
-            str(destination_dir),
+            str(destination_path),
             pdf_filename
         )
 
-        # Save metadata with matching filename
+        # Record download time after successful download
+        downloaded_at = datetime.now()
+
+        # Save metadata using existing method
+        # (This only saves arXiv metadata, not download info)
         metadata_path = self._save_metadata(
             paper,
-            str(destination_dir),
+            str(destination_path),
             metadata_filename
         )
 
         logger.info(
-            f"Downloaded and saved metadata for {paper.title} to {destination_dir}"
+            f"Downloaded and saved metadata for {paper.title} to {destination_path}"
         )
 
-        return pdf_path, metadata_path
+        # Return DownloadResult with all download info
+        # (This is where download-specific info lives, not in Paper)
+        return DownloadResult(
+            pdf_path=pdf_path,
+            metadata_path=metadata_path,
+            save_dir=destination_path,
+            pdf_filename=pdf_filename,
+            metadata_filename=metadata_filename,
+            downloaded_at=downloaded_at,
+        )

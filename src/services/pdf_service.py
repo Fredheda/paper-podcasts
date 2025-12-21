@@ -4,7 +4,9 @@ import logging
 from pathlib import Path
 from typing import Optional
 from markitdown import MarkItDown
+from datetime import datetime
 from ..models.extracted_content import ExtractedContent
+from ..models.extraction_result import ExtractionResult
 
 
 logger = logging.getLogger(__name__)
@@ -17,7 +19,7 @@ class PdfService:
         """Initialize the PDF service with MarkItDown converter."""
         self.converter = MarkItDown()
 
-    def extract(self, paper: str) -> ExtractedContent:
+    def extract(self, pdf_path: str | Path) -> ExtractedContent:
         """
         Extract content from a PDF as structured markdown.
 
@@ -25,7 +27,7 @@ class PdfService:
             pdf_path: Path to the PDF file
 
         Returns:
-            ExtractedContent with markdown and metadata
+            ExtractedContent with markdown
 
         Raises:
             FileNotFoundError: If PDF file doesn't exist
@@ -36,58 +38,60 @@ class PdfService:
             content = service.extract("paper.pdf")
             print(content.markdown)
         """
+        pdf_path = Path(pdf_path)
 
-        if not Path(paper.pdf_path).exists():
-            raise FileNotFoundError(f"PDF file not found: {paper.pdf_path}")
+        if not pdf_path.exists():
+            raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
-        logger.info(f"Extracting content from {paper.title}")
+        logger.info(f"Extracting content from {pdf_path.name}")
 
         try:
             # Convert PDF to markdown
-            result = self.converter.convert(paper.pdf_path)
+            result = self.converter.convert(str(pdf_path))
 
             content = ExtractedContent(
                 markdown=result.text_content
             )
 
             logger.info(
-                f"Successfully extracted content from {paper.title} "
-                f"({len(content.markdown)} chars)"
+                f"Successfully extracted {len(content.markdown)} characters"
             )
 
             return content
 
         except Exception as e:
-            logger.error(f"Failed to extract content from {paper.title}: {e}")
+            logger.error(f"Failed to extract content from {pdf_path}: {e}")
             raise
 
     def save(
         self,
         content: ExtractedContent,
-        filename: str,
-        output_dir: str = "extracted_content",
+        output_dir: str | Path,
+        base_filename: str,
     ) -> Path:
         """
-        Save extracted markdown content to a text file.
+        Save extracted markdown content to a file.
 
         Args:
-            content: ExtractedContent object to save
+            content: ExtractedContent to save
             output_dir: Directory where file should be saved
-            filename: Output filename (defaults to title-based name)
+            base_filename: Base name for output file (without extension)
 
         Returns:
-            Path to the saved file
+            Path to the saved markdown file
 
         Example:
             service = PdfService()
             content = service.extract("paper.pdf")
-            service.save(content, "output/", "paper.txt")
+            saved_path = service.save(content, "output/", "my_paper")
         """
         output_dir = Path(output_dir)
-        filename = Path(f"{filename.split(".")[0]}.md")
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        output_path = output_dir / filename
+        # Always use .md extension
+        output_filename = f"{base_filename}.md"
+        output_path = output_dir / output_filename
+
         output_path.write_text(content.markdown, encoding="utf-8")
 
         logger.info(f"Saved markdown to {output_path}")
@@ -95,30 +99,44 @@ class PdfService:
 
     def extract_and_save(
         self,
-        pdf_path: str,
-        filename: str,
-        output_dir: str = "extracted_content",
-        
-    ) -> tuple[Path, ExtractedContent]:
+        pdf_path: str | Path,
+        output_dir: str | Path,
+        base_filename: Optional[str] = None,
+    ) -> ExtractionResult:
         """
-        Extract content from PDF and save it in one step.
+        Extract content from PDF and save it.
 
         Args:
             pdf_path: Path to the PDF file
-            output_dir: Directory where file should be saved
-            filename: Output filename (optional)
+            output_dir: Directory where markdown should be saved
+            base_filename: Base name for output file (defaults to PDF filename)
 
         Returns:
-            Tuple of (saved_file_path, extracted_content)
+            ExtractionResult with content and metadata
 
         Example:
             service = PdfService()
-            file_path, content = service.extract_and_save(
-                "paper.pdf",
-                "output/"
+            result = service.extract_and_save(
+                pdf_path="paper.pdf",
+                output_dir="output/extracted",
+                base_filename="my_paper"
             )
+            print(f"Saved to: {result.saved_path}")
         """
+        # Extract content
         content = self.extract(pdf_path)
-        output_path = self.save(content, filename, output_dir)
 
-        return output_path, content
+        # Determine base filename
+        if base_filename is None:
+            base_filename = Path(pdf_path).stem
+
+        # Save
+        saved_path = self.save(content, output_dir, base_filename)
+
+        # Return result object
+        return ExtractionResult(
+            content=content,
+            saved_path=saved_path,
+            extracted_at=datetime.now(),
+            character_count=len(content.markdown),
+        )
