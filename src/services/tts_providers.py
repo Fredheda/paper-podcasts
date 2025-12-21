@@ -39,7 +39,7 @@ class OpenAITTSProvider(TTSProvider):
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "tts-1",
+        model: str = "gpt-4o-mini-tts",
         voice: str = "alloy",
     ):
         """
@@ -47,7 +47,7 @@ class OpenAITTSProvider(TTSProvider):
 
         Args:
             api_key: OpenAI API key (reads from OPENAI_API_KEY env var if None)
-            model: TTS model (tts-1 or tts-1-hd)
+            model: TTS model (gpt-4o-mini-tts)
             voice: Default voice (alloy, echo, fable, onyx, nova, shimmer)
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")

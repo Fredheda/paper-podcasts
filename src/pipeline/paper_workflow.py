@@ -1,7 +1,6 @@
 """State machine for paper processing workflow."""
 
 import logging
-from datetime import datetime
 from typing import Optional
 
 from statemachine import StateMachine, State
