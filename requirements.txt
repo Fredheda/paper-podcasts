@@ -16,3 +16,6 @@ python-statemachine
 # LLM Providers
 anthropic
 openai
+
+pydot
+graphviz
