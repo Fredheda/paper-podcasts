@@ -13,3 +13,10 @@ notebooks/extracted_content/*
 notebooks/summaries/*
 src/services/llm_service.py
 summaries/*
+.DS_Store
+legacy/*
+*.pdf
+*.json
+*.mp3
+examples/data/*
+examples/papers/*

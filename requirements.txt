@@ -10,6 +10,9 @@ markitdown[all]
 # Utilities
 python-dotenv
 
+# State Machine
+python-statemachine
+
 # LLM Providers
 anthropic
 openai
