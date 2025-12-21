@@ -2,12 +2,11 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
 from datetime import datetime
 
-from .llm_providers import LLMProvider, AnthropicProvider
+from .llm_providers import LLMProvider
 from ..models.paper import Paper
-from ..models.extracted_content import ExtractedContent
+from ..models.summary_result import SummaryResult
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +97,7 @@ class LLMService:
         prompt_name: str = "summarize_paper",
         max_tokens: int = 4096,
         temperature: float = 0.7,
-    ) -> "SummaryResult":
+    ) -> SummaryResult:
         """
         Summarize a paper using LLM and save to disk.
 
@@ -113,9 +112,6 @@ class LLMService:
         Returns:
             SummaryResult with summary and metadata
         """
-        from datetime import datetime
-        from pathlib import Path
-        from ..models.summary_result import SummaryResult
 
         logger.info(f"Summarizing paper: {paper.title}")
 
@@ -138,11 +134,8 @@ class LLMService:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Determine filename from paper's PDF filename or arxiv_id
-        if hasattr(paper, 'pdf_filename') and paper.pdf_filename:
-            base_filename = Path(paper.pdf_filename).stem
-        else:
-            base_filename = paper.arxiv_id
+        # Use cleaned title for consistent naming
+        base_filename = paper.cleaned_title
 
         summary_filename = f"summary_{base_filename}.txt"
         summary_path = output_dir / summary_filename

@@ -60,9 +60,6 @@ class PipelineResult:
             "is_failed": self.is_failed,
             "download": {
                 "pdf_path": str(self.download.pdf_path) if self.download else None,
-                "metadata_path": str(self.download.metadata_path)
-                if self.download
-                else None,
             }
             if self.download
             else None,
@@ -224,11 +221,11 @@ class PaperPipeline:
         workflow.start_download()
 
         try:
-            # Create paper-specific directory
-            download_dir = self.storage_dir / "papers" / paper.arxiv_id
+            # Create paper-specific directory using cleaned title
+            download_dir = self.storage_dir / "papers" / paper.cleaned_title
 
             # Download paper
-            result = self.arxiv.download_and_save_metadata(paper, str(download_dir))
+            result = self.arxiv.download_paper(paper, str(download_dir))
 
             workflow.complete_download()
             self._save_paper_state(paper)
@@ -310,6 +307,7 @@ class PaperPipeline:
                 prompt_name="summarize_paper",
             )
 
+            logger.info(f"Summarized paper. Length of summary: {len(result.summary_text)} characters")
             workflow.complete_summarize()
             self._save_paper_state(paper)
             logger.info(f"[SUMMARIZE] Completed. Saved to {result.saved_path}")
@@ -416,26 +414,22 @@ class PaperPipeline:
         Returns:
             DownloadResult if files exist, None otherwise
         """
-        download_dir = self.storage_dir / "papers" / paper.arxiv_id
+        download_dir = self.storage_dir / "papers" / paper.cleaned_title
 
         if not download_dir.exists():
             return None
 
-        # Find PDF and JSON files in the paper's directory
+        # Find PDF file in the paper's directory
         pdf_files = list(download_dir.glob("*.pdf"))
-        json_files = list(download_dir.glob("*.json"))
 
-        if pdf_files and json_files:
+        if pdf_files:
             pdf_path = pdf_files[0]
-            metadata_path = json_files[0]
 
             logger.info(f"Loading existing download result for {paper.arxiv_id}")
             return DownloadResult(
                 pdf_path=pdf_path,
-                metadata_path=metadata_path,
                 save_dir=download_dir,
                 pdf_filename=pdf_path.name,
-                metadata_filename=metadata_path.name,
                 downloaded_at=datetime.fromtimestamp(pdf_path.stat().st_mtime),
             )
 
@@ -451,7 +445,7 @@ class PaperPipeline:
         Returns:
             ExtractionResult if files exist, None otherwise
         """
-        download_dir = self.storage_dir / "papers" / paper.arxiv_id
+        download_dir = self.storage_dir / "papers" / paper.cleaned_title
         extract_dir = download_dir / "extracted"
 
         if not extract_dir.exists():
@@ -485,7 +479,7 @@ class PaperPipeline:
         Returns:
             SummaryResult if files exist, None otherwise
         """
-        download_dir = self.storage_dir / "papers" / paper.arxiv_id
+        download_dir = self.storage_dir / "papers" / paper.cleaned_title
         summary_dir = download_dir / "summaries"
 
         if not summary_dir.exists():
@@ -518,7 +512,7 @@ class PaperPipeline:
         Returns:
             AudioResult if files exist, None otherwise
         """
-        download_dir = self.storage_dir / "papers" / paper.arxiv_id
+        download_dir = self.storage_dir / "papers" / paper.cleaned_title
         audio_dir = download_dir / "audio"
 
         if not audio_dir.exists():
@@ -551,14 +545,14 @@ class PaperPipeline:
         except Exception as e:
             logger.warning(f"Failed to save paper state: {e}")
 
-    def load_paper(self, arxiv_id: str) -> Optional[Paper]:
+    def load_paper(self, title: str) -> Optional[Paper]:
         """
-        Load a paper's state from disk.
+        Load a paper's state from disk using its title.
 
         This allows resuming processing across different script runs.
 
         Args:
-            arxiv_id: ArXiv ID of the paper to load
+            title: Title of the paper to load (will be cleaned automatically)
 
         Returns:
             Paper object if found, None otherwise
@@ -568,8 +562,8 @@ class PaperPipeline:
             result = pipeline.process_paper(paper, stages=["download", "extract"])
 
             # In script run 2 (days later)
-            paper = pipeline.load_paper("2301.12345")
+            paper = pipeline.load_paper("Attention Is All You Need")
             if paper:
                 result = pipeline.process_paper(paper, stages=["summarize"])
         """
-        return Paper.load_from_disk(arxiv_id, self.storage_dir)
+        return Paper.load_from_disk(title, self.storage_dir)

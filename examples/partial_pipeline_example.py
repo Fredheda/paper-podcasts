@@ -69,10 +69,10 @@ def main():
 
     # Simulate script restart: delete and reload from disk
     print(f"\n[Part 2] Simulating script restart (load from disk)")
-    paper_id = paper.arxiv_id
+    paper_title = paper.title
     del paper
 
-    paper = pipeline.load_paper(paper_id)
+    paper = pipeline.load_paper(paper_title)
     if not paper:
         print("   ✗ Failed to load paper")
         return
@@ -88,7 +88,7 @@ def main():
     result = pipeline.process_paper(paper, stages=["audio"])
     print(f"   State: {result.current_stage}")
 
-    print(f"\n✓ Pipeline complete - State file: data/papers/{paper.arxiv_id}/paper_state.json")
+    print(f"\n✓ Pipeline complete - State file: data/papers/{paper.cleaned_title}/paper_state.json")
 
 if __name__ == "__main__":
     main()

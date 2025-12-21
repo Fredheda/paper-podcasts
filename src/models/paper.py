@@ -35,7 +35,6 @@ class Paper:
     downloaded_at: Optional[datetime] = None
     save_dir: Optional[str] = None
     pdf_filename: Optional[str] = None
-    metadata_filename: Optional[str] = None
     status: str = "new"  # States: new, downloading, downloaded, extracting, extracted, summarizing, summarized, generating_audio, completed, failed
 
     def __post_init__(self):
@@ -43,6 +42,40 @@ class Paper:
         # Remove version number if present (e.g., "2301.12345v2" -> "2301.12345")
         if 'v' in self.arxiv_id:
             self.arxiv_id = self.arxiv_id.split('v')[0]
+
+    @staticmethod
+    def clean_filename(title: str, max_length: int = 200) -> str:
+        """
+        Clean a paper title for use as a filename or directory name.
+
+        Removes invalid filename characters and normalizes whitespace.
+
+        Args:
+            title: The paper title to clean
+            max_length: Maximum length for the filename (default: 200)
+
+        Returns:
+            Cleaned filename string
+        """
+        # Remove invalid filename characters: / \ : * ? " < > |
+        invalid_chars = '/\\:*?"<>|'
+        cleaned = title
+        for char in invalid_chars:
+            cleaned = cleaned.replace(char, '_')
+
+        # Replace multiple spaces with single space, then spaces with underscores
+        cleaned = ' '.join(cleaned.split())
+        cleaned = cleaned.replace(' ', '_')
+
+        # Limit length to avoid filesystem issues
+        cleaned = cleaned[:max_length]
+
+        return cleaned
+
+    @property
+    def cleaned_title(self) -> str:
+        """Get the cleaned title for use in filenames and directories."""
+        return self.clean_filename(self.title)
 
     @property
     def short_id(self) -> str:
@@ -66,13 +99,6 @@ class Paper:
             return str(Path(self.save_dir) / self.pdf_filename)
         return None
 
-    @property
-    def metadata_path(self) -> Optional[str]:
-        """Get the full path to the metadata file."""
-        if self.save_dir and self.metadata_filename:
-            return str(Path(self.save_dir) / self.metadata_filename)
-        return None
-
     def to_dict(self) -> dict:
         """Convert paper to dictionary for JSON serialization."""
         return {
@@ -91,9 +117,7 @@ class Paper:
             "downloaded_at": self.downloaded_at.isoformat() if self.downloaded_at else None,
             "save_dir": self.save_dir,
             "pdf_filename": self.pdf_filename,
-            "metadata_filename": self.metadata_filename,
             "pdf_path": self.pdf_path,
-            "metadata_path": self.metadata_path,
             "status": self.status,
         }
 
@@ -102,7 +126,6 @@ class Paper:
         """Create Paper from dictionary."""
         # Remove computed properties (they'll be automatically recreated)
         data.pop("pdf_path", None)
-        data.pop("metadata_path", None)
 
         # Parse datetime strings
         data["published"] = datetime.fromisoformat(data["published"])
@@ -125,7 +148,7 @@ class Paper:
         Returns:
             Path to saved state file
         """
-        paper_dir = storage_dir / "papers" / self.arxiv_id
+        paper_dir = storage_dir / "papers" / self.cleaned_title
         paper_dir.mkdir(parents=True, exist_ok=True)
 
         state_file = paper_dir / "paper_state.json"
@@ -135,18 +158,19 @@ class Paper:
         return state_file
 
     @classmethod
-    def load_from_disk(cls, arxiv_id: str, storage_dir: Path) -> Optional["Paper"]:
+    def load_from_disk(cls, title: str, storage_dir: Path) -> Optional["Paper"]:
         """
-        Load paper state from disk.
+        Load paper state from disk using the paper title.
 
         Args:
-            arxiv_id: ArXiv ID of the paper
+            title: Paper title (will be cleaned automatically)
             storage_dir: Root storage directory (e.g., "data")
 
         Returns:
             Paper object if state file exists, None otherwise
         """
-        state_file = storage_dir / "papers" / arxiv_id / "paper_state.json"
+        cleaned_title = cls.clean_filename(title)
+        state_file = storage_dir / "papers" / cleaned_title / "paper_state.json"
 
         if not state_file.exists():
             return None
