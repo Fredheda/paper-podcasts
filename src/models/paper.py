@@ -1,5 +1,6 @@
 """Data models for research papers."""
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -113,3 +114,44 @@ class Paper:
         data["authors"] = [Author(**a) for a in data["authors"]]
 
         return cls(**data)
+
+    def save_to_disk(self, storage_dir: Path) -> Path:
+        """
+        Save paper state to disk for persistence across runs.
+
+        Args:
+            storage_dir: Root storage directory (e.g., "data")
+
+        Returns:
+            Path to saved state file
+        """
+        paper_dir = storage_dir / "papers" / self.arxiv_id
+        paper_dir.mkdir(parents=True, exist_ok=True)
+
+        state_file = paper_dir / "paper_state.json"
+        with open(state_file, "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+        return state_file
+
+    @classmethod
+    def load_from_disk(cls, arxiv_id: str, storage_dir: Path) -> Optional["Paper"]:
+        """
+        Load paper state from disk.
+
+        Args:
+            arxiv_id: ArXiv ID of the paper
+            storage_dir: Root storage directory (e.g., "data")
+
+        Returns:
+            Paper object if state file exists, None otherwise
+        """
+        state_file = storage_dir / "papers" / arxiv_id / "paper_state.json"
+
+        if not state_file.exists():
+            return None
+
+        with open(state_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        return cls.from_dict(data)

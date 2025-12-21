@@ -167,7 +167,7 @@ class PaperPipeline:
                 if not result.download:
                     result.download = self._load_download_result(paper)
                 if result.download:
-                    result.extraction = self._stage_extract(result.download, workflow)
+                    result.extraction = self._stage_extract(paper, result.download, workflow)
 
             # Summarize stage - lazy load extraction result if needed
             if "summarize" in stages and workflow.can_summarize():
@@ -183,16 +183,18 @@ class PaperPipeline:
                 if not result.summary:
                     result.summary = self._load_summary_result(paper)
                 if result.summary:
-                    result.audio = self._stage_audio(result.summary, workflow)
+                    result.audio = self._stage_audio(paper, result.summary, workflow)
 
             # Finalize pipeline if audio generation is complete
             if workflow.can_finalize():
                 workflow.finalize()
+                self._save_paper_state(paper)
 
         except Exception as e:
             error_msg = f"Pipeline error: {str(e)}"
             result.errors.append(error_msg)
             workflow.mark_failed(error=error_msg)
+            self._save_paper_state(paper)
             logger.error(f"Pipeline failed for {paper.arxiv_id}: {e}", exc_info=True)
 
         finally:
@@ -229,6 +231,7 @@ class PaperPipeline:
             result = self.arxiv.download_and_save_metadata(paper, str(download_dir))
 
             workflow.complete_download()
+            self._save_paper_state(paper)
             logger.info(f"[DOWNLOAD] Completed for {paper.arxiv_id}")
 
             return result
@@ -238,12 +241,13 @@ class PaperPipeline:
             raise
 
     def _stage_extract(
-        self, download: DownloadResult, workflow: PaperWorkflow
+        self, paper: Paper, download: DownloadResult, workflow: PaperWorkflow
     ) -> ExtractionResult:
         """
         Execute extraction stage.
 
         Args:
+            paper: Paper being processed
             download: Result from download stage
             workflow: State machine to update
 
@@ -265,6 +269,7 @@ class PaperPipeline:
             )
 
             workflow.complete_extract()
+            self._save_paper_state(paper)
             logger.info(
                 f"[EXTRACT] Completed. Saved to {result.saved_path} "
                 f"({result.character_count} chars)"
@@ -306,6 +311,7 @@ class PaperPipeline:
             )
 
             workflow.complete_summarize()
+            self._save_paper_state(paper)
             logger.info(f"[SUMMARIZE] Completed. Saved to {result.saved_path}")
 
             return result
@@ -315,12 +321,13 @@ class PaperPipeline:
             raise
 
     def _stage_audio(
-        self, summary: SummaryResult, workflow: PaperWorkflow
+        self, paper: Paper, summary: SummaryResult, workflow: PaperWorkflow
     ) -> AudioResult:
         """
         Execute audio generation stage.
 
         Args:
+            paper: Paper being processed
             summary: Result from summarization stage
             workflow: State machine to update
 
@@ -345,6 +352,7 @@ class PaperPipeline:
             )
 
             workflow.complete_audio_generation()
+            self._save_paper_state(paper)
             logger.info(f"[AUDIO] Completed. Saved to {result.audio_path}")
 
             return result
@@ -529,3 +537,39 @@ class PaperPipeline:
             )
 
         return None
+
+    def _save_paper_state(self, paper: Paper) -> None:
+        """
+        Save paper state to disk for persistence across runs.
+
+        Args:
+            paper: Paper to save
+        """
+        try:
+            state_file = paper.save_to_disk(self.storage_dir)
+            logger.debug(f"Saved paper state to {state_file}")
+        except Exception as e:
+            logger.warning(f"Failed to save paper state: {e}")
+
+    def load_paper(self, arxiv_id: str) -> Optional[Paper]:
+        """
+        Load a paper's state from disk.
+
+        This allows resuming processing across different script runs.
+
+        Args:
+            arxiv_id: ArXiv ID of the paper to load
+
+        Returns:
+            Paper object if found, None otherwise
+
+        Example:
+            # In script run 1
+            result = pipeline.process_paper(paper, stages=["download", "extract"])
+
+            # In script run 2 (days later)
+            paper = pipeline.load_paper("2301.12345")
+            if paper:
+                result = pipeline.process_paper(paper, stages=["summarize"])
+        """
+        return Paper.load_from_disk(arxiv_id, self.storage_dir)
