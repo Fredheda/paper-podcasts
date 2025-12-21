@@ -19,7 +19,7 @@ Paper Podcasts is an automated pipeline that converts academic papers into audio
 
 ## User Interface
 
-![UI](assets/UI.png)
+![UI](assets/UI_image.png)
 
 
 
