@@ -529,7 +529,7 @@ def render_library():
 
             # Audio player
             if paper_info["audio_path"]:
-                st.audio(str(paper_info["audio_path"]), format="audio/mp3")
+                st.audio(str(paper_info["audio_path"]), format="audio/mpeg")
 
                 # Download buttons row
                 col1, col2 = st.columns(2)
@@ -540,7 +540,7 @@ def render_library():
                             label="⬇️ Download MP3",
                             data=audio_file,
                             file_name=f"{paper_info['title'][:TITLE_TRUNCATE_SHORT]}.mp3",
-                            mime="audio/mp3",
+                            mime="audio/mpeg",
                             key=f"download_{paper_info['arxiv_id']}",
                             use_container_width=True
                         )
