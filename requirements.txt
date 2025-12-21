@@ -19,3 +19,5 @@ openai
 
 pydot
 graphviz
+
+streamlit
