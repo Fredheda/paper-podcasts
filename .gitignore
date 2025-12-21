@@ -20,3 +20,4 @@ legacy/*
 *.mp3
 examples/data/*
 examples/papers/*
+data/*

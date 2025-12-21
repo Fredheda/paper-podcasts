@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from ..models.extracted_content import ExtractedContent
+from .extracted_content import ExtractedContent
 
 
 @dataclass
