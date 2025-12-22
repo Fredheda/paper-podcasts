@@ -16,6 +16,7 @@ Writing guidelines for audio:
 - Use transitional phrases to connect ideas smoothly
 - Keep sentences reasonably short to maintain clarity when spoken
 - Aim for 300-500 words total
+- Split up your summary into sub-sections with headings. Include formatting using Markdown for headings and when you want to emphasize things.
 
 Paper content:
 {paper_content}
