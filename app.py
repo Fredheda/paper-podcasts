@@ -580,14 +580,14 @@ def render_library():
                                 st.write(content)
                             elif content_type == "file":
                                 summary_text = Path(content).read_text()
-                                st.write(summary_text)
+                                st.html(summary_text)
                             elif content_type == "extract":
                                 extract_text = Path(content).read_text()
                                 if len(extract_text) > EXTRACT_TEXT_PREVIEW_LIMIT:
-                                    st.markdown(extract_text[:EXTRACT_TEXT_PREVIEW_LIMIT] + "...")
+                                    st.html(extract_text[:EXTRACT_TEXT_PREVIEW_LIMIT] + "...")
                                     st.caption(f"(Showing first {EXTRACT_TEXT_PREVIEW_LIMIT:,} characters)")
                                 else:
-                                    st.markdown(extract_text)
+                                    st.html(extract_text)
                         except Exception as e:
                             st.error(f"Could not load content: {e}")
                             logger.error(f"Error loading content: {e}", exc_info=True)
