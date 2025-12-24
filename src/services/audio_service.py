@@ -1,6 +1,7 @@
 """Service for generating audio from text."""
 
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -9,6 +10,21 @@ from .tts_providers import TTSProvider
 from ..models.audio_result import AudioResult
 
 logger = logging.getLogger(__name__)
+
+
+def clean_text_for_tts(text: str) -> str:
+    """
+    Remove markdown and HTML formatting from text for TTS.
+    Args:
+        text: Text with potential markdown/HTML formatting
+    Returns:
+        Clean text suitable for text-to-speech
+    """
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    # Remove markdown headers (# ## ### etc.)
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    return text
 
 
 class AudioService:
@@ -64,7 +80,7 @@ class AudioService:
 
         # Generate audio
         self.provider.generate_audio(
-            text=text,
+            text=clean_text_for_tts(text),
             voice=voice,
             output_path=audio_path,
         )

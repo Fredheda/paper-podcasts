@@ -103,7 +103,7 @@ class OpenAITTSProvider(TTSProvider):
                 model=self.model,
                 voice=voice,
                 input=text,
-                instructions="The text includes markdown formatting tags which should be treated as such."
+                instructions="The text includes markdown and/or html formatting tags which should be treated as such."
             ) as response:
                 response.stream_to_file(str(output_file))
 

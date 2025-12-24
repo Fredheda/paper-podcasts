@@ -17,7 +17,7 @@ class LLMProvider(ABC):
     def generate(
         self,
         prompt: str,
-        max_tokens: int = 4096,
+        max_tokens: int = 2000,
         temperature: float = 0.7,
     ) -> str:
         """
