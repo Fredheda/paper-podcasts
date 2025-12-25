@@ -15,6 +15,7 @@ from src.services.llm_providers import AnthropicProvider
 from src.services.audio_service import AudioService
 from src.services.tts_providers import OpenAITTSProvider
 from src.pipeline.paper_pipeline import PaperPipeline
+from src.models.paper import Paper
 
 # Configure logging
 logging.basicConfig(
@@ -193,6 +194,8 @@ def load_library_from_disk() -> List[dict]:
                 "summary_path": summary_files[0] if summary_files else None,
                 "extract_path": extract_files[0] if extract_files else None,
                 "paper_dir": paper_dir,
+                "listen_status": paper_data.get("listen_status", "unlistened"),
+                "last_listened_at": paper_data.get("last_listened_at", None),
             })
         except Exception as e:
             logger.error(f"Error loading paper from {paper_dir}: {e}")
@@ -458,6 +461,7 @@ def process_selected_papers(pipeline: PaperPipeline):
     st.rerun()
 
 
+@st.fragment
 def render_library():
     """Render the podcast library."""
     st.subheader("📚 Your Podcast Library")
@@ -486,22 +490,33 @@ def render_library():
 
         return
 
-    # Filter by status
-    col1, col2 = st.columns([3, 1])
+    # Filters
+    col1, col2, col3 = st.columns([2, 1, 1])
     with col2:
         filter_status = st.selectbox(
-            "Filter by status",
+            "Processing Status",
             options=["all", "completed", "in progress"],
-            label_visibility="collapsed"
+        )
+    with col3:
+        filter_listen = st.selectbox(
+            "Listen Status",
+            options=["all", "unlistened", "listened"],
         )
 
-    # Apply filter using list comprehension
+    # Apply filters using list comprehension
+    library = all_library
+
+    # Apply processing status filter
     if filter_status == "completed":
-        library = [p for p in all_library if p["status"] == "completed"]
+        library = [p for p in library if p["status"] == "completed"]
     elif filter_status == "in progress":
-        library = [p for p in all_library if p["status"] != "completed"]
-    else:
-        library = all_library
+        library = [p for p in library if p["status"] != "completed"]
+
+    # Apply listen status filter
+    if filter_listen == "unlistened":
+        library = [p for p in library if p["listen_status"] == "unlistened"]
+    elif filter_listen == "listened":
+        library = [p for p in library if p["listen_status"] == "listened"]
 
     with col1:
         st.write(f"**{len(library)} paper{'s' if len(library) != 1 else ''} in library**")
@@ -510,15 +525,42 @@ def render_library():
 
         # Status emoji for expander label
         status_emoji = "✅" if paper_info["status"] == "completed" else "⏳"
+        # Only show headphones emoji for unlistened papers (draws attention to what needs listening)
+        listen_emoji = "🎧 " if paper_info["listen_status"] == "unlistened" else ""
 
         # Create expander with title and status
-        with st.expander(f"{status_emoji} {paper_info['title']}", expanded=False):
+        with st.expander(f"{status_emoji} {listen_emoji}{paper_info['title']}", expanded=False):
             # Authors
             if paper_info["authors"]:
                 authors_str = format_authors(paper_info["authors"])
                 st.caption(f"👤 {authors_str}")
 
             st.caption(f"📋 Status: {paper_info['status']}")
+
+            # Listen status and mark buttons
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                listen_status_text = "Listened" if paper_info["listen_status"] == "listened" else "Unlistened"
+                st.caption(f"🎧 Listen Status: {listen_status_text}")
+                if paper_info["last_listened_at"]:
+                    st.caption(f"Last listened: {paper_info['last_listened_at']}")
+            with col2:
+                if paper_info["listen_status"] == "unlistened":
+                    if st.button("Mark as Listened", key=f"mark_listened_{paper_info['arxiv_id']}", use_container_width=True, type="primary"):
+                        # Load paper from disk and mark as listened
+                        paper = Paper.load_from_disk(paper_info["title"], Path("data"))
+                        if paper:
+                            paper.mark_listened(Path("data"))
+                            load_library_from_disk.clear()  # Clear cache
+                            st.rerun()
+                else:
+                    if st.button("Mark as Unlistened", key=f"mark_unlistened_{paper_info['arxiv_id']}", use_container_width=True):
+                        # Load paper from disk and mark as unlistened
+                        paper = Paper.load_from_disk(paper_info["title"], Path("data"))
+                        if paper:
+                            paper.mark_unlistened(Path("data"))
+                            load_library_from_disk.clear()  # Clear cache
+                            st.rerun()
 
             # Link to arXiv paper
             if paper_info["arxiv_id"]:

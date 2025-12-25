@@ -37,6 +37,10 @@ class Paper:
     pdf_filename: Optional[str] = None
     status: str = "new"  # States: new, downloading, downloaded, extracting, extracted, summarizing, summarized, generating_audio, completed, failed
 
+    # Listen tracking metadata
+    listen_status: str = "unlistened"  # States: unlistened, listened
+    last_listened_at: Optional[datetime] = None
+
     def __post_init__(self):
         """Ensure arxiv_id is clean (without version number for storage)."""
         # Remove version number if present (e.g., "2301.12345v2" -> "2301.12345")
@@ -99,6 +103,28 @@ class Paper:
             return str(Path(self.save_dir) / self.pdf_filename)
         return None
 
+    def mark_listened(self, storage_dir: Path) -> None:
+        """
+        Mark this paper as listened and save the state to disk.
+
+        Args:
+            storage_dir: Root storage directory (e.g., "data")
+        """
+        self.listen_status = "listened"
+        self.last_listened_at = datetime.now()
+        self.save_to_disk(storage_dir)
+
+    def mark_unlistened(self, storage_dir: Path) -> None:
+        """
+        Mark this paper as unlistened and save the state to disk.
+
+        Args:
+            storage_dir: Root storage directory (e.g., "data")
+        """
+        self.listen_status = "unlistened"
+        self.last_listened_at = None
+        self.save_to_disk(storage_dir)
+
     def to_dict(self) -> dict:
         """Convert paper to dictionary for JSON serialization."""
         return {
@@ -119,6 +145,8 @@ class Paper:
             "pdf_filename": self.pdf_filename,
             "pdf_path": self.pdf_path,
             "status": self.status,
+            "listen_status": self.listen_status,
+            "last_listened_at": self.last_listened_at.isoformat() if self.last_listened_at else None,
         }
 
     @classmethod
@@ -132,6 +160,8 @@ class Paper:
         data["updated"] = datetime.fromisoformat(data["updated"])
         if data.get("downloaded_at"):
             data["downloaded_at"] = datetime.fromisoformat(data["downloaded_at"])
+        if data.get("last_listened_at"):
+            data["last_listened_at"] = datetime.fromisoformat(data["last_listened_at"])
 
         # Parse authors
         data["authors"] = [Author(**a) for a in data["authors"]]
