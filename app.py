@@ -36,7 +36,7 @@ st.set_page_config(
 # Constants
 # ============================================================================
 
-LIBRARY_CACHE_TTL = 60  # seconds
+LIBRARY_CACHE_TTL = 300  # seconds (5 minutes)
 DEFAULT_MAX_RESULTS = 5
 DEFAULT_EXACT_MATCH = True
 EXTRACT_TEXT_PREVIEW_LIMIT = 5000  # characters
@@ -461,7 +461,6 @@ def process_selected_papers(pipeline: PaperPipeline):
     st.rerun()
 
 
-@st.fragment
 def render_library():
     """Render the podcast library."""
     st.subheader("📚 Your Podcast Library")
