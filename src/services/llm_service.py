@@ -95,7 +95,7 @@ class LLMService:
         extracted_content: str,
         output_dir: str | Path,
         prompt_name: str = "summarize_paper",
-        max_tokens: int = 4096,
+        max_tokens: int = 2000,
         temperature: float = 0.7,
     ) -> SummaryResult:
         """
