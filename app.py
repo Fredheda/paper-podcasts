@@ -14,6 +14,7 @@ from src.services.llm_service import LLMService
 from src.services.llm_providers import AnthropicProvider
 from src.services.audio_service import AudioService
 from src.services.tts_providers import OpenAITTSProvider
+from src.services.processing_manager import ProcessingManager
 from src.pipeline.paper_pipeline import PaperPipeline
 from src.models.paper import Paper
 
@@ -97,9 +98,6 @@ def init_session_state():
     if "current_view" not in st.session_state:
         st.session_state.current_view = "search"
 
-    if "processing_complete" not in st.session_state:
-        st.session_state.processing_complete = False
-
     if "exact_match" not in st.session_state:
         st.session_state.exact_match = DEFAULT_EXACT_MATCH
 
@@ -142,6 +140,12 @@ def init_services():
         "arxiv": arxiv_service,
         "pipeline": pipeline,
     }
+
+
+@st.cache_resource
+def init_processing_manager(_pipeline: PaperPipeline):
+    """Initialize the background processing manager (cached across reruns)."""
+    return ProcessingManager(_pipeline)
 
 
 # ============================================================================
@@ -276,7 +280,7 @@ def render_search_interface(services):
                 logger.error(f"Search error: {e}", exc_info=True)
 
 
-def render_search_results(services):
+def render_search_results(services, processing_manager: ProcessingManager):
     """Render search results with selection checkboxes."""
     if not st.session_state.search_results:
         # Better empty state with centered content
@@ -348,117 +352,75 @@ def render_search_results(services):
 
     if selected_count > 0:
         if st.button(f"🎙️ Process {selected_count} Selected Paper{'s' if selected_count > 1 else ''}", type="primary"):
-            st.session_state.processing_complete = False
-            process_selected_papers(services["pipeline"])
+            enqueue_selected_papers(processing_manager)
     else:
         st.button(f"🎙️ Process 0 Selected Papers", type="primary", disabled=True)
 
 
-def format_file_size(size_bytes: int) -> str:
-    """Format file size in human-readable format."""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.1f} TB"
-
-
-def process_selected_papers(pipeline: PaperPipeline):
-    """Process selected papers through the pipeline with real-time progress tracking."""
+def enqueue_selected_papers(processing_manager: ProcessingManager):
+    """Queue selected papers for background processing."""
     selected_papers = [
         paper for paper in st.session_state.search_results
         if paper.arxiv_id in st.session_state.selected_papers
     ]
 
-    if not selected_papers:
+    if len(selected_papers) == 0:
         st.warning("No papers selected")
         return
 
-    for i, paper in enumerate(selected_papers):
-        st.subheader(f"Processing {i+1}/{len(selected_papers)}: {paper.title}")
+    queued_count = 0
+    skipped_count = 0
+    for paper in selected_papers:
+        queued = processing_manager.enqueue(paper)
+        if queued:
+            queued_count += 1
+        else:
+            skipped_count += 1
 
-        with st.status(f"Processing {paper.title[:TITLE_TRUNCATE_SHORT]}...", expanded=True) as status:
-            try:
-                # Stage 1: Download
-                st.write("📥 Downloading PDF...")
-                download_result = pipeline.process_paper(paper, stages=["download"])
-
-                if download_result.download:
-                    pdf_size = download_result.download.pdf_path.stat().st_size
-                    st.write(f"✅ Downloaded PDF ({format_file_size(pdf_size)})")
-                else:
-                    st.write("⚠️ Download failed or already exists")
-                    if download_result.errors:
-                        st.error(f"Download error: {download_result.errors[0]}")
-                        status.update(label=f"❌ Failed at download: {paper.title[:TITLE_TRUNCATE_SHORT]}", state="error")
-                        continue
-
-                # Stage 2: Extract
-                st.write("📄 Extracting text from PDF...")
-                extract_result = pipeline.process_paper(paper, stages=["extract"])
-
-                if extract_result.extraction:
-                    char_count = extract_result.extraction.character_count
-                    st.write(f"✅ Extracted {char_count:,} characters")
-                else:
-                    st.write("⚠️ Extraction failed")
-                    if extract_result.errors:
-                        st.error(f"Extraction error: {extract_result.errors[0]}")
-                        status.update(label=f"❌ Failed at extraction: {paper.title[:TITLE_TRUNCATE_SHORT]}", state="error")
-                        continue
-
-                # Stage 3: Summarize
-                st.write("🤖 Generating summary with AI...")
-                summary_result = pipeline.process_paper(paper, stages=["summarize"])
-
-                if summary_result.summary:
-                    summary_length = len(summary_result.summary.summary_text)
-                    word_count = len(summary_result.summary.summary_text.split())
-                    st.write(f"✅ Generated summary ({word_count:,} words, {summary_length:,} characters)")
-                else:
-                    st.write("⚠️ Summarization failed")
-                    if summary_result.errors:
-                        st.error(f"Summary error: {summary_result.errors[0]}")
-                        status.update(label=f"❌ Failed at summarization: {paper.title[:TITLE_TRUNCATE_SHORT]}", state="error")
-                        continue
-
-                # Stage 4: Audio Generation
-                st.write("🎙️ Generating podcast audio...")
-                audio_result = pipeline.process_paper(paper, stages=["audio"])
-
-                if audio_result.audio:
-                    audio_size = audio_result.audio.audio_path.stat().st_size
-                    duration_info = ""
-                    if audio_result.audio.audio_duration_seconds:
-                        mins = int(audio_result.audio.audio_duration_seconds // 60)
-                        secs = int(audio_result.audio.audio_duration_seconds % 60)
-                        duration_info = f", {mins}:{secs:02d}"
-                    st.write(f"✅ Generated audio ({format_file_size(audio_size)}{duration_info})")
-                else:
-                    st.write("⚠️ Audio generation failed")
-                    if audio_result.errors:
-                        st.error(f"Audio error: {audio_result.errors[0]}")
-                        status.update(label=f"❌ Failed at audio generation: {paper.title[:TITLE_TRUNCATE_SHORT]}", state="error")
-                        continue
-
-                # All stages complete!
-                if audio_result.is_successful:
-                    status.update(label=f"✅ Complete: {paper.title[:TITLE_TRUNCATE_SHORT]}", state="complete")
-                    st.toast(f"🎉 Successfully processed: {paper.title[:TITLE_TRUNCATE_LONG]}", icon="✅")
-                else:
-                    status.update(label=f"⚠️ Partially complete: {paper.title[:TITLE_TRUNCATE_SHORT]}", state="running")
-                    st.toast(f"⚠️ Partially completed: {paper.title[:TITLE_TRUNCATE_LONG]}", icon="⚠️")
-
-            except Exception as e:
-                status.update(label=f"❌ Error: {paper.title[:TITLE_TRUNCATE_SHORT]}", state="error")
-                st.error(f"Error processing {paper.title}: {e}")
-                logger.error(f"Processing error: {e}", exc_info=True)
-
-    # Mark processing complete and refresh library
-    st.session_state.processing_complete = True
     st.session_state.selected_papers = set()
-    load_library_from_disk.clear()  # Clear cache to reload library
-    st.rerun()
+    if queued_count:
+        st.success(
+            f"Queued {queued_count} paper{'s' if queued_count != 1 else ''} for background processing."
+        )
+    if skipped_count:
+        st.info(
+            f"{skipped_count} paper{'s were' if skipped_count != 1 else ' was'} already queued or currently processing."
+        )
+
+
+def render_processing_status(processing_manager: ProcessingManager):
+    """Render active/queued/completed processing status."""
+    counts = processing_manager.get_counts()
+    jobs = processing_manager.get_jobs()
+
+    has_active_work = (counts["active"] + counts["queued"]) > 0
+    with st.expander("⚙️ Processing Queue", expanded=has_active_work):
+        st.caption(
+            f"Active: {counts['active']} • Queued: {counts['queued']} • Completed: {counts['completed']} • Failed: {counts['failed']}"
+        )
+
+        if not jobs:
+            st.info("No processing jobs yet.")
+            return
+
+        if st.button("Refresh Queue", key="refresh_queue_status"):
+            load_library_from_disk.clear()
+            st.rerun()
+
+        for job in jobs:
+            if job.is_active:
+                badge = "🟢 Active"
+            elif job.stage == "queued":
+                badge = f"🕒 Queued ({job.queue_position})"
+            elif job.stage == "completed":
+                badge = "✅ Complete"
+            else:
+                badge = "❌ Failed"
+
+            st.markdown(f"**{job.title}**")
+            st.progress(job.progress, text=f"{badge} • {job.message}")
+            if job.error:
+                st.caption(f"Error: {job.error}")
 
 
 def render_library():
@@ -638,7 +600,7 @@ def render_library():
 # Sidebar
 # ============================================================================
 
-def render_sidebar():
+def render_sidebar(processing_manager: ProcessingManager):
     """Render the sidebar with navigation and info."""
     with st.sidebar:
         st.title("📚 Paper Podcasts")
@@ -657,6 +619,11 @@ def render_sidebar():
 
         if view:  # Only update if a value is returned
             st.session_state.current_view = view
+
+        counts = processing_manager.get_counts()
+        st.caption(
+            f"⚙️ Queue: {counts['active']} active, {counts['queued']} queued"
+        )
 
         st.divider()
 
@@ -679,22 +646,22 @@ def main():
     """Main application entry point."""
     init_session_state()
     services = init_services()
+    processing_manager = init_processing_manager(services["pipeline"])
+
+    if processing_manager.has_active_jobs():
+        load_library_from_disk.clear()
 
     render_header()
-    render_sidebar()
+    render_sidebar(processing_manager)
+    render_processing_status(processing_manager)
 
     # Main content based on current view
     if st.session_state.current_view == "search":
         render_search_interface(services)
         st.divider()
-        render_search_results(services)
+        render_search_results(services, processing_manager)
     else:  # library view
         render_library()
-
-    # Show toast notification after processing
-    if st.session_state.processing_complete:
-        st.toast("🎉 Processing complete! Check your library to listen.", icon="🎙️")
-        st.session_state.processing_complete = False
 
 
 if __name__ == "__main__":
