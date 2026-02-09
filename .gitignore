@@ -21,3 +21,6 @@ legacy/*
 examples/data/*
 examples/papers/*
 data/*
+CLAUDE.md
+graph.mmd
+langgraph.ipynb
