@@ -2,11 +2,17 @@
 
 import streamlit as st
 import os
+import sys
 import logging
 import json
 from pathlib import Path
 from dotenv import load_dotenv
 from typing import List
+
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BASE_DIR.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from src.services.arxiv_service import ArxivService
 from src.services.pdf_service import PdfService
@@ -24,6 +30,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+DATA_DIR = REPO_ROOT / "data"
+PROMPTS_DIR = REPO_ROOT / "prompts"
 
 # Page configuration - MUST be first Streamlit command
 st.set_page_config(
@@ -124,7 +133,7 @@ def init_services():
     arxiv_service = ArxivService()
     pdf_service = PdfService()
     llm_provider = AnthropicProvider(api_key=anthropic_api_key)
-    llm_service = LLMService(provider=llm_provider, prompts_dir="prompts")
+    llm_service = LLMService(provider=llm_provider, prompts_dir=str(PROMPTS_DIR))
     tts_provider = OpenAITTSProvider(api_key=openai_api_key)
     audio_service = AudioService(provider=tts_provider)
 
@@ -133,7 +142,7 @@ def init_services():
         pdf_service=pdf_service,
         llm_service=llm_service,
         audio_service=audio_service,
-        storage_dir=Path("data"),
+        storage_dir=DATA_DIR,
     )
 
     return {
@@ -155,7 +164,7 @@ def init_processing_manager(_pipeline: PaperPipeline):
 @st.cache_data(ttl=LIBRARY_CACHE_TTL)
 def load_library_from_disk() -> List[dict]:
     """Load processed papers from the data directory."""
-    data_dir = Path("data/papers")
+    data_dir = DATA_DIR / "papers"
 
     if not data_dir.exists():
         return []
@@ -509,17 +518,17 @@ def render_library():
                 if paper_info["listen_status"] == "unlistened":
                     if st.button("Mark as Listened", key=f"mark_listened_{paper_info['arxiv_id']}", use_container_width=True, type="primary"):
                         # Load paper from disk and mark as listened
-                        paper = Paper.load_from_disk(paper_info["title"], Path("data"))
+                        paper = Paper.load_from_disk(paper_info["title"], DATA_DIR)
                         if paper:
-                            paper.mark_listened(Path("data"))
+                            paper.mark_listened(DATA_DIR)
                             load_library_from_disk.clear()  # Clear cache
                             st.rerun()
                 else:
                     if st.button("Mark as Unlistened", key=f"mark_unlistened_{paper_info['arxiv_id']}", use_container_width=True):
                         # Load paper from disk and mark as unlistened
-                        paper = Paper.load_from_disk(paper_info["title"], Path("data"))
+                        paper = Paper.load_from_disk(paper_info["title"], DATA_DIR)
                         if paper:
-                            paper.mark_unlistened(Path("data"))
+                            paper.mark_unlistened(DATA_DIR)
                             load_library_from_disk.clear()  # Clear cache
                             st.rerun()
 

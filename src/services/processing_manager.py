@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 import threading
 from collections import deque
 from dataclasses import dataclass
@@ -10,6 +11,8 @@ from datetime import datetime
 from typing import Deque, Dict, List, Optional
 
 from src.models.paper import Paper
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -182,13 +185,14 @@ class ProcessingManager:
                     error=None,
                 )
             except Exception as exc:
+                logger.exception("Background processing failed for %s", paper_id)
                 self._set_stage(
                     paper_id,
                     stage="failed",
                     message="Processing failed",
                     is_active=False,
                     queue_position=None,
-                    error=str(exc),
+                    error="Processing failed. Check server logs for details.",
                 )
             finally:
                 with self._lock:
@@ -213,7 +217,13 @@ class ProcessingManager:
         )
         result = self._pipeline.process_paper(paper, stages=[pipeline_stage])
         if result.errors:
-            raise RuntimeError(result.errors[0])
+            logger.error(
+                "Pipeline stage '%s' failed for %s: %s",
+                pipeline_stage,
+                paper_id,
+                result.errors[0],
+            )
+            raise RuntimeError("Processing failed.")
 
     def _is_queued_or_active_locked(self, paper_id: str) -> bool:
         if paper_id in self._active_paper_ids:

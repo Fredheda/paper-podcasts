@@ -1,26 +1,44 @@
-notebooks/.DS_Store
+# OS / editor
+.DS_Store
+
+# Python
 __pycache__
-*.pdf
-notebooks/papers/*
-notebooks/downloads/*
-notebooks/experimentation.ipynb
-extracted_content/*
 .env
 requirements.txt
-notebooks/anthropic_experimentation.ipynb
-notebooks/audio/*
-notebooks/extracted_content/*
-notebooks/summaries/*
-src/services/llm_service.py
-summaries/*
-.DS_Store
-legacy/*
+
+# Generated artifacts
 *.pdf
 *.json
 *.mp3
+data/*
+summaries/*
+extracted_content/*
+
+# Notebooks / experiments
+notebooks/.DS_Store
+notebooks/papers/*
+notebooks/downloads/*
+notebooks/audio/*
+notebooks/extracted_content/*
+notebooks/summaries/*
+notebooks/experimentation.ipynb
+notebooks/anthropic_experimentation.ipynb
+langgraph.ipynb
+graph.mmd
+
+# Legacy / examples
+legacy/*
+streamlit/legacy/*
+streamlit/examples/*
 examples/data/*
 examples/papers/*
-data/*
+
+# Local docs / local overrides
 CLAUDE.md
-graph.mmd
-langgraph.ipynb
+src/services/llm_service.py
+
+# Frontend build artifacts
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/tsconfig.tsbuildinfo
