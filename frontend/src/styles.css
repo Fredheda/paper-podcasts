@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #0a111d;
+  --color-ink-900: #121b2c;
+  --color-ink-700: #2f4260;
+  --color-mint-500: #16b891;
+  --color-coral-500: #ff6f59;
+  --color-sand-100: #f9f8f3;
+}
+
+@layer base {
+  body {
+    @apply min-h-screen bg-[radial-gradient(circle_at_15%_15%,rgba(22,184,145,0.16),transparent_35%),radial-gradient(circle_at_85%_0%,rgba(255,111,89,0.22),transparent_32%),linear-gradient(180deg,#f7f8fb_0%,#eef2f7_100%)] text-ink-900 antialiased;
+    font-family: "Manrope", "SF Pro Display", "Segoe UI", sans-serif;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-2xl border border-white/60 bg-white/80 shadow-[0_20px_40px_-26px_rgba(10,17,29,0.45)] backdrop-blur;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700;
+  }
+
+  .tab-btn {
+    @apply rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900;
+  }
+
+  .tab-btn-active {
+    @apply border-transparent bg-ink-900 text-white shadow;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-mint-500 focus:ring-4 focus:ring-mint-500/15;
+  }
+
+  .primary-btn {
+    @apply inline-flex items-center justify-center rounded-xl bg-ink-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .soft-btn {
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}

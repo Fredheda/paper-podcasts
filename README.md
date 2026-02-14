@@ -1,122 +1,71 @@
 # Paper Podcasts
 
-Transform research papers into audio podcasts using AI. Search arXiv, process papers through an intelligent pipeline, and listen to AI-generated summaries.
+Paper Podcasts turns arXiv papers into summaries and audio, with a shared processing pipeline and two UI options:
 
-## Overview
+- `streamlit/`: legacy Streamlit app (preserved)
+- `backend/` + `frontend/`: current FastAPI + React app
 
-Paper Podcasts is an automated pipeline that converts academic papers into audio summaries. It downloads papers from arXiv, extracts and processes their content using large language models, and generates podcast-style audio summaries using text-to-speech technology.
+## Repository Layout
 
-## Features
+- `src/`: shared domain models, services, and pipeline
+- `prompts/`: shared LLM prompts
+- `data/`: generated paper artifacts (state, extracted text, summaries, audio)
+- `assets/`: static images/diagrams
+- `backend/`: FastAPI API server
+- `frontend/`: React + TypeScript + Tailwind UI
+- `streamlit/`: legacy Streamlit implementation
 
-- **arXiv Integration**: Search and download papers directly from arXiv
-- **Intelligent Processing Pipeline**: State machine-driven workflow ensures robust processing
-- **AI-Powered Summaries**: Uses Anthropic's Claude to generate accessible summaries
-- **Text-to-Speech**: Converts summaries to high-quality audio using OpenAI's TTS
-- **Web Interface**: Streamlit-based UI for easy interaction
-- **Persistent Storage**: Saves papers, summaries, and audio for later access
-- **Resume Capability**: Can resume processing from any stage
+## Prerequisites
 
+- Python 3.11+
+- Node.js 18+
+- API keys:
+  - `ANTHROPIC_API_KEY`
+  - `OPENAI_API_KEY`
 
-## User Interface
+Create a root `.env` file:
 
-![UI](assets/UI_image.png)
-
-
-
-
-
-## Pipeline Architecture
-
-The processing pipeline is managed by a state machine that ensures reliable, step-by-step processing:
-
-![State Machine Visualization](src/pipeline/assets/state_machine_visualisation.png)
-
-**Processing Stages:**
-1. **Download**: Fetch PDF from arXiv
-2. **Extract**: Convert PDF to structured text
-3. **Summarize**: Generate accessible summary using LLM
-4. **Audio Generation**: Convert summary to speech
-5. **Complete**: Paper ready for listening
-
-## Installation
-
-### Prerequisites
-
-- Python 3.12 or higher
-- API keys for:
-  - Anthropic (Claude)
-  - OpenAI (TTS)
-
-### Setup
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/Fredheda/paper-podcasts.git
-cd paper-podcasts
+ANTHROPIC_API_KEY=your_key
+OPENAI_API_KEY=your_key
 ```
 
-2. Install dependencies:
+## Run (Current App: Backend + Frontend)
+
+1. Start backend:
+
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
+uvicorn backend.app.main:app --reload --port 8000
 ```
 
-3. Create a `.env` file in the project root:
+2. Start frontend (new terminal):
+
 ```bash
-ANTHROPIC_API_KEY=your_anthropic_api_key
-OPENAI_API_KEY=your_openai_api_key
+cd frontend
+npm install
+npm run dev
 ```
 
-## Usage
+Frontend runs on `http://127.0.0.1:5173` and calls backend at `http://localhost:8000` by default.
 
-### Web Interface (Recommended)
+## Run (Legacy Streamlit App)
 
-Launch the Streamlit app:
 ```bash
-streamlit run app.py
+pip install -r streamlit/requirements.txt
+streamlit run streamlit/app.py
 ```
 
-Then:
-1. Search for papers on arXiv
-2. Select papers to process
-3. Monitor processing progress
-4. Listen to generated podcasts in your library
+## Core Capabilities
 
+- Search papers on arXiv
+- Enqueue processing jobs with concurrent workers (up to configured limit) and queue overflow
+- Track live job status/progress
+- Browse processed library with filters
+- View abstract, summary, and extracted full text
+- Play generated audio and mark listened/unlistened
 
-## Project Structure
+## Notes
 
-```
-paper-podcasts/
-├── src/
-│   ├── models/          # Data models (Paper, Summary, Audio, etc.)
-│   ├── services/        # External service integrations
-│   │   ├── arxiv_service.py
-│   │   ├── pdf_service.py
-│   │   ├── llm_service.py
-│   │   ├── audio_service.py
-│   │   └── ...
-│   └── pipeline/        # Processing pipeline
-│       ├── paper_pipeline.py
-│       ├── paper_workflow.py
-│       └── assets/
-│           └── state_machine_visualisation.png
-├── prompts/             # LLM prompts
-├── data/                # Processed papers storage
-├── app.py               # Streamlit web interface
-├── main.py              # CLI entry point
-└── requirements.txt
-```
-
-## Configuration
-
-The pipeline can be configured through constructor parameters:
-
-- `storage_dir`: Directory for storing papers and outputs (default: `data/`)
-- LLM provider and model selection
-- TTS provider and voice options
-- Processing stages to run
-
-## Acknowledgments
-
-- Built with [Anthropic Claude](https://www.anthropic.com/)
-- TTS powered by [OpenAI](https://openai.com/)
-- Papers sourced from [arXiv](https://arxiv.org/)
+- Artifacts are written under `data/` and shared across Streamlit and API/UI.
+- Backend security controls (CORS allowlist, optional API key, rate limiting, HTTPS controls) are documented in `backend/README.md`.
