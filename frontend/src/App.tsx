@@ -597,7 +597,7 @@ export default function App(): JSX.Element {
           <div className="max-w-2xl space-y-3">
             <p className="pill">Paper Podcasts Platform</p>
             <h1 className="text-3xl font-black tracking-tight text-ink-950 md:text-5xl">
-              Discover, process, and listen to research at production speed.
+              Research Papers
             </h1>
             <p className="text-sm text-slate-600 md:text-base">
               Designed for async paper operations with queue visibility, rich library tools, and clear status feedback.
