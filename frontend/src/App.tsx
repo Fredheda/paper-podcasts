@@ -268,6 +268,41 @@ function summaryTextToSafeHtml(summaryText: string): string {
   return sanitizeSummaryHtml(candidate);
 }
 
+function libraryRelevanceScore(item: LibraryItem, normalizedQuery: string, terms: string[]): number {
+  if (!normalizedQuery) return 0;
+
+  const title = (item.title || '').toLowerCase();
+  const arxivId = (item.arxiv_id || '').toLowerCase();
+  const abstract = (item.abstract || '').toLowerCase();
+  const authors = (item.authors || [])
+    .map((author) => (author?.name || '').toLowerCase())
+    .join(' ');
+
+  let score = 0;
+
+  // Strong boosts for direct matches in high-signal fields.
+  if (title === normalizedQuery) score += 240;
+  else if (title.startsWith(normalizedQuery)) score += 150;
+  else if (title.includes(normalizedQuery)) score += 90;
+
+  if (arxivId === normalizedQuery) score += 200;
+  else if (arxivId.includes(normalizedQuery)) score += 110;
+
+  if (authors.includes(normalizedQuery)) score += 80;
+  if (abstract.includes(normalizedQuery)) score += 30;
+
+  // Add term-level scoring so multi-word queries rank partial matches better.
+  for (const term of terms) {
+    if (!term) continue;
+    if (title.includes(term)) score += 24;
+    if (authors.includes(term)) score += 16;
+    if (arxivId.includes(term)) score += 14;
+    if (abstract.includes(term)) score += 4;
+  }
+
+  return score;
+}
+
 export default function App(): JSX.Element {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -292,6 +327,7 @@ export default function App(): JSX.Element {
 
   const [libraryStatusFilter, setLibraryStatusFilter] = useState<LibraryStatusFilter>('all');
   const [listenFilter, setListenFilter] = useState<ListenFilter>('all');
+  const [librarySearchQuery, setLibrarySearchQuery] = useState('');
   const [contentByPaperId, setContentByPaperId] = useState<Record<string, LibraryContent>>({});
   const [contentLoadingIds, setContentLoadingIds] = useState<Set<string>>(new Set());
   const [activeContentTabByPaperId, setActiveContentTabByPaperId] = useState<Record<string, ContentTab>>({});
@@ -305,7 +341,10 @@ export default function App(): JSX.Element {
   );
 
   const filteredLibrary = useMemo(() => {
-    return library.filter((item) => {
+    const normalizedQuery = librarySearchQuery.trim().toLowerCase();
+    const queryTerms = normalizedQuery.split(/\s+/).filter(Boolean);
+
+    const baseFiltered = library.filter((item) => {
       const statusMatch =
         libraryStatusFilter === 'all' ||
         (libraryStatusFilter === 'completed' ? item.status === 'completed' : item.status !== 'completed');
@@ -314,9 +353,23 @@ export default function App(): JSX.Element {
         listenFilter === 'all' ||
         (listenFilter === 'listened' ? item.listen_status === 'listened' : item.listen_status === 'unlistened');
 
-      return statusMatch && listenMatch;
+      if (!normalizedQuery) return statusMatch && listenMatch;
+
+      const score = libraryRelevanceScore(item, normalizedQuery, queryTerms);
+      return statusMatch && listenMatch && score > 0;
     });
-  }, [library, libraryStatusFilter, listenFilter]);
+
+    if (!normalizedQuery) return baseFiltered;
+
+    return baseFiltered
+      .map((item, index) => ({
+        item,
+        index,
+        score: libraryRelevanceScore(item, normalizedQuery, queryTerms)
+      }))
+      .sort((a, b) => b.score - a.score || a.index - b.index)
+      .map((entry) => entry.item);
+  }, [library, libraryStatusFilter, listenFilter, librarySearchQuery]);
 
   useEffect(() => {
     async function bootstrap(): Promise<void> {
@@ -751,7 +804,17 @@ export default function App(): JSX.Element {
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <label className="space-y-1 text-sm font-medium text-slate-700 xl:col-span-2">
+              Search library
+              <input
+                className="field"
+                value={librarySearchQuery}
+                onChange={(event) => setLibrarySearchQuery(event.target.value)}
+                placeholder="Title, arXiv ID, author, abstract..."
+              />
+            </label>
+
             <label className="space-y-1 text-sm font-medium text-slate-700">
               Processing status
               <select
