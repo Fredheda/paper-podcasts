@@ -292,6 +292,7 @@ export default function App(): JSX.Element {
 
   const [libraryStatusFilter, setLibraryStatusFilter] = useState<LibraryStatusFilter>('all');
   const [listenFilter, setListenFilter] = useState<ListenFilter>('all');
+  const [librarySearchQuery, setLibrarySearchQuery] = useState<string>('');
   const [contentByPaperId, setContentByPaperId] = useState<Record<string, LibraryContent>>({});
   const [contentLoadingIds, setContentLoadingIds] = useState<Set<string>>(new Set());
   const [activeContentTabByPaperId, setActiveContentTabByPaperId] = useState<Record<string, ContentTab>>({});
@@ -305,6 +306,7 @@ export default function App(): JSX.Element {
   );
 
   const filteredLibrary = useMemo(() => {
+    const query = librarySearchQuery.trim().toLowerCase();
     return library.filter((item) => {
       const statusMatch =
         libraryStatusFilter === 'all' ||
@@ -314,9 +316,15 @@ export default function App(): JSX.Element {
         listenFilter === 'all' ||
         (listenFilter === 'listened' ? item.listen_status === 'listened' : item.listen_status === 'unlistened');
 
-      return statusMatch && listenMatch;
+      const searchMatch =
+        !query ||
+        item.title.toLowerCase().includes(query) ||
+        item.arxiv_id.toLowerCase().includes(query) ||
+        item.authors.some((author) => author.name?.toLowerCase().includes(query));
+
+      return statusMatch && listenMatch && searchMatch;
     });
-  }, [library, libraryStatusFilter, listenFilter]);
+  }, [library, libraryStatusFilter, listenFilter, librarySearchQuery]);
 
   useEffect(() => {
     async function bootstrap(): Promise<void> {
@@ -750,6 +758,17 @@ export default function App(): JSX.Element {
               Filter by processing/listening status, play audio, and inspect summaries and extracted content.
             </p>
           </div>
+
+          <label className="mb-3 block space-y-1 text-sm font-medium text-slate-700">
+            Search
+            <input
+              type="search"
+              className="field"
+              placeholder="Filter by title, author, or arXiv ID"
+              value={librarySearchQuery}
+              onChange={(event) => setLibrarySearchQuery(event.target.value)}
+            />
+          </label>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-1 text-sm font-medium text-slate-700">
