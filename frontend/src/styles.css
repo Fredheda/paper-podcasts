@@ -37,7 +37,7 @@
   }
 
   .tab-btn-active {
-    @apply border-transparent bg-ink-900 text-white shadow;
+    @apply border-transparent bg-ink-900 text-white shadow hover:border-transparent hover:bg-ink-700 hover:text-white;
   }
 
   .field {
