@@ -34,6 +34,7 @@ class AppState:
         self.arxiv: Optional[ArxivService] = None
         self.pipeline: Optional[PaperPipeline] = None
         self.processing: Optional[ProcessingManager] = None
+        self.llm_provider: Optional[AnthropicProvider] = None
 
 
 state = AppState()
@@ -74,6 +75,7 @@ async def lifespan(_: object):
     state.arxiv = arxiv_service
     state.pipeline = pipeline
     state.processing = ProcessingManager(pipeline, max_concurrent=DEFAULT_MAX_CONCURRENT)
+    state.llm_provider = llm_provider
 
     logger.info("Backend initialized with data dir: %s", DATA_DIR)
 

@@ -14,6 +14,7 @@ import logging
 
 from fastapi import FastAPI
 
+from .routes.chat import router as chat_router
 from .routes.health import router as health_router
 from .routes.jobs import router as jobs_router
 from .routes.library import router as library_router
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(jobs_router)
     app.include_router(library_router)
+    app.include_router(chat_router)
 
     return app
 
