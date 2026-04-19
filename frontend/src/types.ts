@@ -70,3 +70,8 @@ export type LibraryContent = {
   summary_text: string | null;
   extract_text: string | null;
 };
+
+export type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};

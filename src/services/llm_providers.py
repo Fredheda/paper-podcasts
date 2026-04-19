@@ -4,8 +4,13 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, List, Optional, TypedDict
 from anthropic import Anthropic
+
+
+class ChatTurn(TypedDict):
+    role: str
+    content: str
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +36,17 @@ class LLMProvider(ABC):
         Returns:
             Generated text from the LLM
         """
+        pass
+
+    @abstractmethod
+    def stream_chat(
+        self,
+        messages: List[ChatTurn],
+        system: Optional[str] = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+    ) -> Iterator[str]:
+        """Stream a multi-turn chat completion, yielding text chunks."""
         pass
 
 
@@ -94,3 +110,24 @@ class AnthropicProvider(LLMProvider):
         except Exception as e:
             logger.error(f"Error generating with Anthropic: {e}")
             raise
+
+    def stream_chat(
+        self,
+        messages: List[ChatTurn],
+        system: Optional[str] = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+    ) -> Iterator[str]:
+        logger.info(f"Streaming chat with {self.model} ({len(messages)} messages)")
+        kwargs = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": messages,
+        }
+        if system:
+            kwargs["system"] = system
+
+        with self.client.messages.stream(**kwargs) as stream:
+            for text in stream.text_stream:
+                yield text

@@ -1,4 +1,5 @@
 import type {
+  ChatMessage,
   EnqueueResponse,
   JobsResponse,
   LibraryContent,
@@ -76,4 +77,73 @@ export async function updateListenStatus(
 
 export async function checkHealth(): Promise<void> {
   await request<{ status: string }>('/health');
+}
+
+export type ChatStreamHandlers = {
+  onToken: (text: string) => void;
+  onDone: () => void;
+  onError: (message: string) => void;
+  signal?: AbortSignal;
+};
+
+export async function streamChat(
+  arxivIds: string[],
+  messages: ChatMessage[],
+  handlers: ChatStreamHandlers
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    body: JSON.stringify({ arxiv_ids: arxivIds, messages }),
+    signal: handlers.signal
+  });
+
+  if (!response.ok || !response.body) {
+    handlers.onError(`Chat request failed (${response.status}).`);
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let idx: number;
+      while ((idx = buffer.indexOf('\n\n')) !== -1) {
+        const raw = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+
+        let event = 'message';
+        let data = '';
+        for (const line of raw.split('\n')) {
+          if (line.startsWith('event:')) event = line.slice(6).trim();
+          else if (line.startsWith('data:')) data += line.slice(5).trim();
+        }
+        if (!data) continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          if (event === 'token') handlers.onToken(parsed.text ?? '');
+          else if (event === 'done') {
+            handlers.onDone();
+            return;
+          } else if (event === 'error') {
+            handlers.onError(parsed.message ?? 'Unknown error');
+            return;
+          }
+        } catch {
+          // skip malformed events
+        }
+      }
+    }
+    handlers.onDone();
+  } catch (err) {
+    if ((err as { name?: string }).name === 'AbortError') return;
+    handlers.onError((err as Error).message);
+  }
 }
