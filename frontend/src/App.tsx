@@ -10,6 +10,9 @@ import {
   updateListenStatus
 } from './api';
 import type { JobsResponse, LibraryContent, LibraryItem, Paper } from './types';
+import { ChatPanel } from './ChatPanel';
+
+const MAX_CHAT_PAPERS = 5;
 
 type Tab = 'search' | 'queue' | 'library';
 type LibraryStatusFilter = 'all' | 'completed' | 'in progress';
@@ -299,6 +302,24 @@ export default function App(): JSX.Element {
   const [listenUpdatingIds, setListenUpdatingIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState | null>(null);
   const [fullTextModal, setFullTextModal] = useState<{ title: string; text: string } | null>(null);
+  const [selectedForChat, setSelectedForChat] = useState<Set<string>>(new Set());
+
+  function toggleChatSelection(arxivId: string): void {
+    setSelectedForChat((prev) => {
+      const next = new Set(prev);
+      if (next.has(arxivId)) {
+        next.delete(arxivId);
+      } else if (next.size < MAX_CHAT_PAPERS) {
+        next.add(arxivId);
+      }
+      return next;
+    });
+  }
+
+  const selectedForChatPapers = useMemo(
+    () => library.filter((item) => selectedForChat.has(item.arxiv_id)),
+    [library, selectedForChat]
+  );
 
   const selectedPapers = useMemo(
     () => searchResults.filter((paper) => selectedIds.has(paper.arxiv_id)),
@@ -751,6 +772,7 @@ export default function App(): JSX.Element {
       )}
 
       {tab === 'library' && (
+        <>
         <section className="glass-card p-5 md:p-6">
           <div className="mb-5 flex flex-col gap-2">
             <h2 className="text-xl font-bold text-ink-950">Library</h2>
@@ -829,9 +851,29 @@ export default function App(): JSX.Element {
                     style={{ animationDelay: `${Math.min(index * 40, 260)}ms` }}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <h3 className="line-clamp-2 text-base font-bold text-ink-950">{item.title}</h3>
-                        <p className="mt-1 text-xs text-slate-500">{formatAuthors(item.authors)}</p>
+                      <div className="flex min-w-0 items-start gap-2">
+                        {item.status === 'completed' && (
+                          <input
+                            type="checkbox"
+                            title={
+                              selectedForChat.has(item.arxiv_id)
+                                ? 'Remove from chat'
+                                : selectedForChat.size >= MAX_CHAT_PAPERS
+                                ? `Chat limit is ${MAX_CHAT_PAPERS} papers`
+                                : 'Add to chat'
+                            }
+                            checked={selectedForChat.has(item.arxiv_id)}
+                            disabled={
+                              !selectedForChat.has(item.arxiv_id) && selectedForChat.size >= MAX_CHAT_PAPERS
+                            }
+                            onChange={() => toggleChatSelection(item.arxiv_id)}
+                            className="mt-1 h-4 w-4 cursor-pointer accent-ink-900"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <h3 className="line-clamp-2 text-base font-bold text-ink-950">{item.title}</h3>
+                          <p className="mt-1 text-xs text-slate-500">{formatAuthors(item.authors)}</p>
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${stageTone(item.status)}`}>
@@ -921,6 +963,12 @@ export default function App(): JSX.Element {
             </div>
           )}
         </section>
+        <ChatPanel
+          selectedPapers={selectedForChatPapers}
+          onClearSelection={() => setSelectedForChat(new Set())}
+          onDeselect={(id) => toggleChatSelection(id)}
+        />
+        </>
       )}
 
       {toast && <Toast tone={toast.tone} message={toast.message} />}

@@ -51,4 +51,67 @@
   .soft-btn {
     @apply inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50;
   }
+
+  .chat-markdown > :first-child {
+    @apply mt-0;
+  }
+  .chat-markdown > :last-child {
+    @apply mb-0;
+  }
+  .chat-markdown p {
+    @apply my-2;
+  }
+  .chat-markdown h1 {
+    @apply mt-3 mb-2 text-base font-bold text-ink-950;
+  }
+  .chat-markdown h2 {
+    @apply mt-3 mb-2 text-sm font-bold text-ink-950;
+  }
+  .chat-markdown h3,
+  .chat-markdown h4 {
+    @apply mt-2 mb-1 text-sm font-semibold text-ink-950;
+  }
+  .chat-markdown ul {
+    @apply my-2 list-disc pl-5;
+  }
+  .chat-markdown ol {
+    @apply my-2 list-decimal pl-5;
+  }
+  .chat-markdown li {
+    @apply my-0.5;
+  }
+  .chat-markdown li > p {
+    @apply my-0;
+  }
+  .chat-markdown a {
+    @apply text-mint-500 underline underline-offset-2 hover:text-ink-900;
+  }
+  .chat-markdown strong {
+    @apply font-semibold text-ink-950;
+  }
+  .chat-markdown em {
+    @apply italic;
+  }
+  .chat-markdown code {
+    @apply rounded bg-slate-100 px-1 py-0.5 text-[0.85em] font-mono text-ink-900;
+  }
+  .chat-markdown pre {
+    @apply my-2 overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100;
+  }
+  .chat-markdown pre code {
+    @apply bg-transparent p-0 text-slate-100;
+  }
+  .chat-markdown blockquote {
+    @apply my-2 border-l-2 border-slate-300 pl-3 text-slate-600;
+  }
+  .chat-markdown table {
+    @apply my-2 w-full border-collapse text-xs;
+  }
+  .chat-markdown th,
+  .chat-markdown td {
+    @apply border border-slate-200 px-2 py-1 text-left;
+  }
+  .chat-markdown th {
+    @apply bg-slate-50 font-semibold;
+  }
 }

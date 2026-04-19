@@ -93,3 +93,13 @@ class LibraryContentSchema(BaseModel):
 
 class ListenStatusUpdateRequest(BaseModel):
     listen_status: Literal["listened", "unlistened"]
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1)
+
+
+class ChatStreamRequest(BaseModel):
+    arxiv_ids: List[str] = Field(min_length=1, max_length=5)
+    messages: List[ChatMessage] = Field(min_length=1)
