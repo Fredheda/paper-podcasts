@@ -16,7 +16,8 @@ function isMobileWidth(): boolean {
 
 export function ChatPanel({ selectedPapers, onClearSelection, onDeselect }: Props): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMobile, setIsMobile] = useState(isMobileWidth());
+  const [isFullscreen, setIsFullscreen] = useState(isMobileWidth());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -33,24 +34,34 @@ export function ChatPanel({ selectedPapers, onClearSelection, onDeselect }: Prop
   useEffect(() => () => abortRef.current?.abort(), []);
 
   useEffect(() => {
-    const lockScroll = isOpen && isFullscreen && isMobileWidth();
+    function handleResize(): void {
+      const mobile = isMobileWidth();
+      setIsMobile(mobile);
+      if (mobile) setIsFullscreen(true);
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const lockScroll = isOpen && isFullscreen && isMobile;
     document.body.style.overflow = lockScroll ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen, isFullscreen]);
+  }, [isOpen, isFullscreen, isMobile]);
 
   const hasSelection = selectedPapers.length > 0;
   const canSend = hasSelection && input.trim().length > 0 && !streaming;
 
   function handleOpen(): void {
     setIsOpen(true);
-    if (isMobileWidth()) setIsFullscreen(true);
+    if (isMobile) setIsFullscreen(true);
   }
 
   function handleClose(): void {
     setIsOpen(false);
-    setIsFullscreen(false);
+    if (!isMobile) setIsFullscreen(false);
   }
 
   async function handleSubmit(event: FormEvent): Promise<void> {
@@ -109,8 +120,8 @@ export function ChatPanel({ selectedPapers, onClearSelection, onDeselect }: Prop
   }
 
   const panelSizeClass = isFullscreen
-    ? 'bottom-0 right-0 w-screen h-screen rounded-none'
-    : 'bottom-20 right-5 w-[400px] h-[550px]';
+    ? 'bottom-0 right-0 w-screen h-[100dvh] rounded-none'
+    : 'bottom-20 right-5 w-[400px] max-w-[calc(100vw-2.5rem)] h-[550px] max-h-[calc(100dvh-6rem)]';
 
   return (
     <>
@@ -118,15 +129,23 @@ export function ChatPanel({ selectedPapers, onClearSelection, onDeselect }: Prop
         className={`fixed z-50 flex flex-col glass-card p-4 origin-bottom-right transition-[transform,opacity,width,height,bottom,right,border-radius] duration-300 ease-out
           ${panelSizeClass}
           ${isOpen ? 'scale-100 opacity-100 visible' : 'scale-0 opacity-0 invisible pointer-events-none'}`}
+        style={
+          isFullscreen
+            ? {
+                paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+                paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)'
+              }
+            : undefined
+        }
       >
-        <header className="mb-3 flex items-start justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-bold text-ink-950">
+        <header className="mb-3 flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-bold text-ink-950">
               Chat {hasSelection ? `(${selectedPapers.length} paper${selectedPapers.length > 1 ? 's' : ''})` : ''}
             </h3>
-            <p className="text-xs text-slate-500">Grounded in selected papers.</p>
+            <p className="hidden truncate text-xs text-slate-500 sm:block">Grounded in selected papers.</p>
           </div>
-          <div className="flex gap-1">
+          <div className="flex flex-shrink-0 gap-1">
             <button
               type="button"
               className="soft-btn !px-2 !py-1 text-xs hidden md:inline-flex"

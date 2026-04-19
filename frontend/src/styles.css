@@ -15,6 +15,14 @@
     font-family: "Manrope", "SF Pro Display", "Segoe UI", sans-serif;
   }
 
+  @media (max-width: 768px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+
   button,
   input,
   select,
