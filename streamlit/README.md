@@ -7,8 +7,8 @@ This folder contains the preserved Streamlit interface. The primary app is now t
 From repo root:
 
 ```bash
-pip install -r streamlit/requirements.txt
-streamlit run streamlit/app.py
+poetry install --with streamlit
+poetry run streamlit run streamlit/app.py
 ```
 
 Required environment variables in root `.env`:

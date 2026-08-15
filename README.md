@@ -17,7 +17,7 @@ Paper Podcasts turns arXiv papers into summaries and audio, with a shared proces
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.13 (pinned by `.python-version`), managed via Poetry (`pyproject.toml` + `poetry.lock`)
 - Node.js 18+
 - API keys:
   - `ANTHROPIC_API_KEY`
@@ -35,8 +35,8 @@ OPENAI_API_KEY=your_key
 1. Start backend:
 
 ```bash
-pip install -r backend/requirements.txt
-uvicorn backend.app.main:app --reload --port 8000
+poetry install --with backend
+poetry run uvicorn backend.app.main:app --reload --port 8000
 ```
 
 2. Start frontend (new terminal):
@@ -52,8 +52,8 @@ Frontend runs on `http://127.0.0.1:5173` and calls backend at `http://localhost:
 ## Run (Legacy Streamlit App)
 
 ```bash
-pip install -r streamlit/requirements.txt
-streamlit run streamlit/app.py
+poetry install --with streamlit
+poetry run streamlit run streamlit/app.py
 ```
 
 ## Core Capabilities

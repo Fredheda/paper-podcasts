@@ -7,8 +7,8 @@ FastAPI service for search, processing queue orchestration, and library access.
 From repo root:
 
 ```bash
-pip install -r backend/requirements.txt
-uvicorn backend.app.main:app --reload --port 8000
+poetry install --with backend
+poetry run uvicorn backend.app.main:app --reload --port 8000
 ```
 
 The backend loads environment variables from the repo root `.env`.
