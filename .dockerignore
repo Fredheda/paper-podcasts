@@ -1,0 +1,18 @@
+.git
+frontend
+data
+docs
+tests
+node_modules
+**/__pycache__
+**/.pytest_cache
+.venv
+# Secrets: never bake any .env (or variant) into the image. Runtime config
+# comes from Container Apps secrets, not files. Glob + catch-all for defense
+# in depth.
+.env
+.env*
+**/.env
+**/.env*
+CLAUDE.md
+README.md
