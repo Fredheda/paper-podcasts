@@ -43,7 +43,9 @@ def test_generate_returns_message_content():
         _, kwargs = mock_client.chat.completions.create.call_args
         assert kwargs["model"] == "gpt-5.6-luna"
         assert kwargs["max_completion_tokens"] == 100
-        assert kwargs["temperature"] == 0.5
+        # temperature is NOT forwarded -- gpt-5.6-luna (and other current
+        # reasoning-tier models) reject any value other than the default (1).
+        assert "temperature" not in kwargs
         assert kwargs["messages"] == [{"role": "user", "content": "Summarize this paper."}]
 
 
@@ -71,3 +73,4 @@ def test_stream_chat_yields_content_deltas():
         _, kwargs = mock_client.chat.completions.create.call_args
         assert kwargs["messages"][0] == {"role": "system", "content": "You are helpful."}
         assert kwargs["stream"] is True
+        assert "temperature" not in kwargs

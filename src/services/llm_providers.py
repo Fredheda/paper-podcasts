@@ -101,7 +101,11 @@ class OpenAIProvider(LLMProvider):
                 # `max_completion_tokens` is OpenAI's current recommended param
                 # (covers reasoning tokens too) -- `max_tokens` is legacy.
                 max_completion_tokens=max_tokens,
-                temperature=temperature,
+                # `gpt-5.6-luna` (and other current-generation reasoning-tier
+                # models) reject any `temperature` other than the default (1)
+                # with a 400 -- confirmed against the live API, not just docs.
+                # `temperature` stays a method param for interface parity with
+                # other providers; it's just not forwarded to this API call.
                 messages=[{"role": "user", "content": prompt}],
             )
 
@@ -131,7 +135,8 @@ class OpenAIProvider(LLMProvider):
         stream = self.client.chat.completions.create(
             model=self.model,
             max_completion_tokens=max_tokens,
-            temperature=temperature,
+            # See generate()'s comment: this model family rejects a
+            # non-default temperature, so it's not forwarded here either.
             messages=chat_messages,
             stream=True,
         )
