@@ -4,7 +4,11 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from ..services.blob_storage_service import BlobStorageService
+    from ..services.metadata_service import MetadataService
 
 from .paper_workflow import PaperWorkflow
 from ..models.paper import Paper
@@ -103,6 +107,8 @@ class PaperPipeline:
         llm_service: LLMService,
         audio_service: AudioService,
         storage_dir: Path,
+        blob_service: Optional["BlobStorageService"] = None,
+        metadata_service: Optional["MetadataService"] = None,
     ):
         """
         Initialize the pipeline with required services.
@@ -113,17 +119,39 @@ class PaperPipeline:
             llm_service: Service for generating summaries
             audio_service: Service for generating audio
             storage_dir: Root directory for storing artifacts
+            blob_service: Optional Azure Blob backend -- when set, each
+                stage's output file is also uploaded there (STORAGE_BACKEND=azure)
+            metadata_service: Optional Azure SQL backend -- when set, paper
+                metadata is also upserted there on every state save
         """
         self.arxiv = arxiv_service
         self.pdf = pdf_service
         self.llm = llm_service
         self.audio = audio_service
         self.storage_dir = Path(storage_dir)
+        self.blob_service = blob_service
+        self.metadata_service = metadata_service
 
         # Create storage directory if it doesn't exist
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Initialized pipeline with storage at: {self.storage_dir}")
+
+    def _maybe_upload(self, local_path: Path) -> None:
+        """Push one just-written local artifact to Blob, if configured.
+
+        Local disk write always happens first and unconditionally (needed
+        within this replica's run for the _load_*_result lazy-reload paths)
+        -- this only adds the durable copy on top.
+        """
+        if self.blob_service is None:
+            return
+        try:
+            blob_path = local_path.relative_to(self.storage_dir / "papers").as_posix()
+            self.blob_service.upload_file(blob_path, local_path)
+            logger.debug(f"Uploaded {local_path} to blob path {blob_path}")
+        except Exception as e:
+            logger.warning(f"Failed to upload {local_path} to blob storage: {e}")
 
     def process_paper(
         self,
@@ -226,6 +254,7 @@ class PaperPipeline:
 
             # Download paper
             result = self.arxiv.download_paper(paper, str(download_dir))
+            self._maybe_upload(result.pdf_path)
 
             workflow.complete_download()
             self._save_paper_state(paper)
@@ -264,6 +293,7 @@ class PaperPipeline:
                 output_dir=extract_dir,
                 base_filename=base_filename,
             )
+            self._maybe_upload(result.saved_path)
 
             workflow.complete_extract()
             self._save_paper_state(paper)
@@ -306,6 +336,7 @@ class PaperPipeline:
                 output_dir=summary_dir,
                 prompt_name="summarize_paper",
             )
+            self._maybe_upload(result.saved_path)
 
             logger.info(f"Summarized paper. Length of summary: {len(result.summary_text)} characters")
             workflow.complete_summarize()
@@ -348,6 +379,7 @@ class PaperPipeline:
                 output_dir=audio_dir,
                 base_filename=base_filename,
             )
+            self._maybe_upload(result.audio_path)
 
             workflow.complete_audio_generation()
             self._save_paper_state(paper)
@@ -534,7 +566,8 @@ class PaperPipeline:
 
     def _save_paper_state(self, paper: Paper) -> None:
         """
-        Save paper state to disk for persistence across runs.
+        Save paper state to disk for persistence across runs, and to Azure
+        SQL too if a metadata backend is configured.
 
         Args:
             paper: Paper to save
@@ -544,6 +577,12 @@ class PaperPipeline:
             logger.debug(f"Saved paper state to {state_file}")
         except Exception as e:
             logger.warning(f"Failed to save paper state: {e}")
+
+        if self.metadata_service is not None:
+            try:
+                self.metadata_service.upsert_paper(paper)
+            except Exception as e:
+                logger.warning(f"Failed to save paper metadata to Azure SQL: {e}")
 
     def load_paper(self, title: str) -> Optional[Paper]:
         """

@@ -14,12 +14,14 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from .config import DATA_DIR, DEFAULT_MAX_CONCURRENT, PROMPTS_DIR
+from .config import DATA_DIR, DEFAULT_MAX_CONCURRENT, PROMPTS_DIR, STORAGE_BACKEND
 from src.pipeline.paper_pipeline import PaperPipeline
 from src.services.arxiv_service import ArxivService
 from src.services.audio_service import AudioService
+from src.services.blob_storage_service import BlobStorageService
 from src.services.llm_providers import OpenAIProvider
 from src.services.llm_service import LLMService
+from src.services.metadata_service import MetadataService
 from src.services.pdf_service import PdfService
 from src.services.processing_manager import ProcessingManager
 from src.services.tts_providers import OpenAITTSProvider
@@ -35,6 +37,8 @@ class AppState:
         self.pipeline: Optional[PaperPipeline] = None
         self.processing: Optional[ProcessingManager] = None
         self.llm_provider: Optional[OpenAIProvider] = None
+        self.blob_service: Optional[BlobStorageService] = None
+        self.metadata_service: Optional[MetadataService] = None
 
 
 state = AppState()
@@ -63,20 +67,30 @@ async def lifespan(_: object):
     tts_provider = OpenAITTSProvider(api_key=openai_api_key)
     audio_service = AudioService(provider=tts_provider)
 
+    blob_service: Optional[BlobStorageService] = None
+    metadata_service: Optional[MetadataService] = None
+    if STORAGE_BACKEND == "azure":
+        blob_service = BlobStorageService(account_name=os.environ["AZURE_STORAGE_ACCOUNT"])
+        metadata_service = MetadataService()
+
     pipeline = PaperPipeline(
         arxiv_service=arxiv_service,
         pdf_service=pdf_service,
         llm_service=llm_service,
         audio_service=audio_service,
         storage_dir=DATA_DIR,
+        blob_service=blob_service,
+        metadata_service=metadata_service,
     )
 
     state.arxiv = arxiv_service
     state.pipeline = pipeline
     state.processing = ProcessingManager(pipeline, max_concurrent=DEFAULT_MAX_CONCURRENT)
     state.llm_provider = llm_provider
+    state.blob_service = blob_service
+    state.metadata_service = metadata_service
 
-    logger.info("Backend initialized with data dir: %s", DATA_DIR)
+    logger.info("Backend initialized with data dir: %s, storage backend: %s", DATA_DIR, STORAGE_BACKEND)
 
     try:
         yield
