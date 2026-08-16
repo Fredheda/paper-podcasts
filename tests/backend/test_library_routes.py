@@ -1,4 +1,6 @@
-"""Tests for STORAGE_BACKEND=azure branches in the library routes."""
+"""Tests for the library routes, against ArtifactStore/MetadataStore mocks.
+Backend-agnostic -- no STORAGE_BACKEND branching in the routes themselves,
+so there's only one test file (unlike the old azure-only variant)."""
 
 from datetime import datetime
 from unittest.mock import MagicMock
@@ -7,14 +9,12 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import backend.app.routes.library as library_routes
 from backend.app.routes.library import router
 from backend.app.state import state as app_state
 
 
 @pytest.fixture
-def client(monkeypatch):
-    monkeypatch.setattr(library_routes, "STORAGE_BACKEND", "azure")
+def client():
     app_state.metadata_service = MagicMock()
     app_state.blob_service = MagicMock()
     app = FastAPI()
@@ -53,7 +53,7 @@ def test_get_library_reads_from_metadata_service(client):
     assert body[0]["audio_url"] == "/api/library/2301.12345/audio"
 
 
-def test_get_library_content_streams_from_blob(client):
+def test_get_library_content_streams_from_artifact_store(client):
     test_client, metadata_service, blob_service = client
     metadata_service.get_paper.return_value = _row()
     blob_service.exists.return_value = True
@@ -75,7 +75,7 @@ def test_get_library_content_404_when_metadata_missing(client):
     assert response.status_code == 404
 
 
-def test_stream_audio_returns_404_when_blob_missing(client):
+def test_stream_audio_returns_404_when_artifact_missing(client):
     test_client, metadata_service, blob_service = client
     metadata_service.get_paper.return_value = _row()
     blob_service.exists.return_value = False
@@ -99,3 +99,14 @@ def test_update_listen_status_writes_to_metadata_service(client):
     args, _ = metadata_service.update_listen_status.call_args
     assert args[0] == "2301.12345"
     assert args[1] == "listened"
+
+
+def test_update_listen_status_404_when_paper_missing(client):
+    test_client, metadata_service, _ = client
+    metadata_service.get_paper.return_value = None
+
+    response = test_client.post(
+        "/api/library/9999.99999/listen", json={"listen_status": "listened"}
+    )
+
+    assert response.status_code == 404

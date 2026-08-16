@@ -11,8 +11,8 @@ from fastapi.responses import StreamingResponse
 
 from src.models.api_schemas import ChatStreamRequest
 
+from ..arxiv_ids import normalize_arxiv_id
 from ..config import PROMPTS_DIR
-from ..library_store import find_paper_dir_and_state
 from ..state import state
 
 logger = logging.getLogger(__name__)
@@ -22,19 +22,18 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 def _load_extract(arxiv_id: str) -> tuple[str, str]:
     """Return (title, extracted markdown) for a paper; raises 404 if missing."""
-    paper_dir, paper_data = find_paper_dir_and_state(arxiv_id)
-    extract_files = (
-        list((paper_dir / "extracted").glob("*.md"))
-        if (paper_dir / "extracted").exists()
-        else []
-    )
-    if not extract_files:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No extracted text for {arxiv_id}",
-        )
-    title = str(paper_data.get("title", arxiv_id))
-    return title, extract_files[0].read_text(encoding="utf-8")
+    normalized = normalize_arxiv_id(arxiv_id)
+    metadata = state.metadata_service.get_paper(normalized)
+    if metadata is None:
+        raise HTTPException(status_code=404, detail=f"No extracted text for {arxiv_id}")
+
+    cleaned_title = metadata["cleaned_title"]
+    extract_path = f"{cleaned_title}/extracted/{cleaned_title}.md"
+    if not state.blob_service.exists(extract_path):
+        raise HTTPException(status_code=404, detail=f"No extracted text for {arxiv_id}")
+
+    text = state.blob_service.download(extract_path).decode("utf-8")
+    return str(metadata["title"]), text
 
 
 def _build_system_prompt(arxiv_ids: list[str]) -> str:
