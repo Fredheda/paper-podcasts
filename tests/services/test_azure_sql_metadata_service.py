@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.models.paper import Author, Paper
-from src.services.metadata_service import MetadataService
+from src.services.azure_sql_metadata_service import AzureSqlMetadataService
 
 
 @pytest.fixture
@@ -35,27 +35,27 @@ def test_init_raises_without_server_or_database(monkeypatch):
     monkeypatch.delenv("AZURE_SQL_SERVER", raising=False)
     monkeypatch.delenv("AZURE_SQL_DATABASE", raising=False)
     with pytest.raises(ValueError):
-        MetadataService()
+        AzureSqlMetadataService()
 
 
 def test_connection_string_uses_msi_when_client_id_present(env, monkeypatch):
     monkeypatch.setenv("AZURE_CLIENT_ID", "abc-123")
-    service = MetadataService()
+    service = AzureSqlMetadataService()
     conn_str = service._connection_string()
     assert "Authentication=ActiveDirectoryMSI;User Id=abc-123;" in conn_str
 
 
 def test_connection_string_uses_default_auth_locally(env):
-    service = MetadataService()
+    service = AzureSqlMetadataService()
     conn_str = service._connection_string()
     assert "Authentication=ActiveDirectoryDefault;" in conn_str
 
 
 def test_upsert_paper_executes_merge_with_18_params(env):
-    with patch("src.services.metadata_service.mssql_python") as mock_mssql:
+    with patch("src.services.azure_sql_metadata_service.mssql_python") as mock_mssql:
         mock_conn = MagicMock()
         mock_mssql.connect.return_value = mock_conn
-        service = MetadataService()
+        service = AzureSqlMetadataService()
 
         service.upsert_paper(_make_paper())
 
@@ -70,24 +70,24 @@ def test_upsert_paper_executes_merge_with_18_params(env):
 
 
 def test_get_paper_returns_none_when_not_found(env):
-    with patch("src.services.metadata_service.mssql_python") as mock_mssql:
+    with patch("src.services.azure_sql_metadata_service.mssql_python") as mock_mssql:
         mock_conn = MagicMock()
         mock_cursor = mock_conn.cursor.return_value
         mock_cursor.fetchone.return_value = None
         mock_mssql.connect.return_value = mock_conn
-        service = MetadataService()
+        service = AzureSqlMetadataService()
 
         assert service.get_paper("9999.99999") is None
 
 
 def test_get_paper_maps_row_to_dict(env):
-    with patch("src.services.metadata_service.mssql_python") as mock_mssql:
+    with patch("src.services.azure_sql_metadata_service.mssql_python") as mock_mssql:
         mock_conn = MagicMock()
         mock_cursor = mock_conn.cursor.return_value
         mock_cursor.description = [("arxiv_id",), ("title",)]
         mock_cursor.fetchone.return_value = ("2301.12345", "Test Paper")
         mock_mssql.connect.return_value = mock_conn
-        service = MetadataService()
+        service = AzureSqlMetadataService()
 
         result = service.get_paper("2301.12345")
 
@@ -95,13 +95,13 @@ def test_get_paper_maps_row_to_dict(env):
 
 
 def test_list_papers_maps_all_rows(env):
-    with patch("src.services.metadata_service.mssql_python") as mock_mssql:
+    with patch("src.services.azure_sql_metadata_service.mssql_python") as mock_mssql:
         mock_conn = MagicMock()
         mock_cursor = mock_conn.cursor.return_value
         mock_cursor.description = [("arxiv_id",), ("title",)]
         mock_cursor.fetchall.return_value = [("id1", "Title 1"), ("id2", "Title 2")]
         mock_mssql.connect.return_value = mock_conn
-        service = MetadataService()
+        service = AzureSqlMetadataService()
 
         result = service.list_papers()
 
@@ -112,10 +112,10 @@ def test_list_papers_maps_all_rows(env):
 
 
 def test_update_listen_status_executes_update(env):
-    with patch("src.services.metadata_service.mssql_python") as mock_mssql:
+    with patch("src.services.azure_sql_metadata_service.mssql_python") as mock_mssql:
         mock_conn = MagicMock()
         mock_mssql.connect.return_value = mock_conn
-        service = MetadataService()
+        service = AzureSqlMetadataService()
 
         service.update_listen_status("2301.12345", "listened", datetime(2026, 8, 15, 10, 0, 0))
 

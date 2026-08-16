@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
     from ..services.blob_storage_service import BlobStorageService
-    from ..services.metadata_service import MetadataService
+    from ..services.azure_sql_metadata_service import AzureSqlMetadataService
 
 from .paper_workflow import PaperWorkflow
 from ..models.paper import Paper
@@ -108,7 +108,7 @@ class PaperPipeline:
         audio_service: AudioService,
         storage_dir: Path,
         blob_service: Optional["BlobStorageService"] = None,
-        metadata_service: Optional["MetadataService"] = None,
+        metadata_service: Optional["AzureSqlMetadataService"] = None,
     ):
         """
         Initialize the pipeline with required services.

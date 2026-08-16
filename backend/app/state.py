@@ -21,7 +21,7 @@ from src.services.audio_service import AudioService
 from src.services.blob_storage_service import BlobStorageService
 from src.services.llm_providers import OpenAIProvider
 from src.services.llm_service import LLMService
-from src.services.metadata_service import MetadataService
+from src.services.azure_sql_metadata_service import AzureSqlMetadataService
 from src.services.pdf_service import PdfService
 from src.services.processing_manager import ProcessingManager
 from src.services.tts_providers import OpenAITTSProvider
@@ -38,7 +38,7 @@ class AppState:
         self.processing: Optional[ProcessingManager] = None
         self.llm_provider: Optional[OpenAIProvider] = None
         self.blob_service: Optional[BlobStorageService] = None
-        self.metadata_service: Optional[MetadataService] = None
+        self.metadata_service: Optional[AzureSqlMetadataService] = None
 
 
 state = AppState()
@@ -68,10 +68,10 @@ async def lifespan(_: object):
     audio_service = AudioService(provider=tts_provider)
 
     blob_service: Optional[BlobStorageService] = None
-    metadata_service: Optional[MetadataService] = None
+    metadata_service: Optional[AzureSqlMetadataService] = None
     if STORAGE_BACKEND == "azure":
         blob_service = BlobStorageService(account_name=os.environ["AZURE_STORAGE_ACCOUNT"])
-        metadata_service = MetadataService()
+        metadata_service = AzureSqlMetadataService()
 
     pipeline = PaperPipeline(
         arxiv_service=arxiv_service,

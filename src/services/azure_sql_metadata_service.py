@@ -1,5 +1,5 @@
-"""Azure SQL metadata store for paper-podcasts, replacing `paper_state.json`
-when STORAGE_BACKEND=azure.
+"""Azure SQL metadata store for paper-podcasts -- the "azure" STORAGE_BACKEND
+implementation of MetadataStore. Replaces paper_state.json for that backend.
 
 Adapted from Portfolio/backend/services/database_client.py's connection
 pattern (copied, not imported -- no cross-project deps, per workspace
@@ -20,11 +20,12 @@ from typing import Any, Optional
 import mssql_python
 
 from ..models.paper import Paper
+from .metadata_store import MetadataStore
 
 logger = logging.getLogger(__name__)
 
 
-class MetadataService:
+class AzureSqlMetadataService(MetadataStore):
     """CRUD for the `papers` table in Azure SQL (see sql/schema.sql)."""
 
     def __init__(self) -> None:
