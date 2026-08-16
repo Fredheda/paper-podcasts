@@ -9,7 +9,6 @@ requirements.txt
 
 # Generated artifacts
 *.pdf
-*.json
 *.mp3
 data/*
 summaries/*

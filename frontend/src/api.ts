@@ -8,8 +8,10 @@ import type {
   SearchResponse
 } from './types';
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.toString() || 'http://localhost:8000';
+// `??` (not `||`) matters here: an explicit empty string (same-origin,
+// relative paths -- the production setting, via .env.production) must NOT
+// fall back to the dev default. Only a genuinely unset var should.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
