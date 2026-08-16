@@ -18,7 +18,7 @@ from .config import DATA_DIR, DEFAULT_MAX_CONCURRENT, PROMPTS_DIR
 from src.pipeline.paper_pipeline import PaperPipeline
 from src.services.arxiv_service import ArxivService
 from src.services.audio_service import AudioService
-from src.services.llm_providers import AnthropicProvider
+from src.services.llm_providers import OpenAIProvider
 from src.services.llm_service import LLMService
 from src.services.pdf_service import PdfService
 from src.services.processing_manager import ProcessingManager
@@ -34,7 +34,7 @@ class AppState:
         self.arxiv: Optional[ArxivService] = None
         self.pipeline: Optional[PaperPipeline] = None
         self.processing: Optional[ProcessingManager] = None
-        self.llm_provider: Optional[AnthropicProvider] = None
+        self.llm_provider: Optional[OpenAIProvider] = None
 
 
 state = AppState()
@@ -50,16 +50,15 @@ def require_state() -> tuple[ArxivService, ProcessingManager]:
 @asynccontextmanager
 async def lifespan(_: object):
     """Build all shared services once on startup and tear down on shutdown."""
-    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
     openai_api_key = os.getenv("OPENAI_API_KEY")
 
-    # Fail startup early if required secrets are missing.
-    if not anthropic_api_key or not openai_api_key:
-        raise RuntimeError("Missing API keys. Set ANTHROPIC_API_KEY and OPENAI_API_KEY.")
+    # Fail startup early if the required secret is missing.
+    if not openai_api_key:
+        raise RuntimeError("Missing API key. Set OPENAI_API_KEY.")
 
     arxiv_service = ArxivService()
     pdf_service = PdfService()
-    llm_provider = AnthropicProvider(api_key=anthropic_api_key)
+    llm_provider = OpenAIProvider(api_key=openai_api_key)
     llm_service = LLMService(provider=llm_provider, prompts_dir=str(PROMPTS_DIR))
     tts_provider = OpenAITTSProvider(api_key=openai_api_key)
     audio_service = AudioService(provider=tts_provider)

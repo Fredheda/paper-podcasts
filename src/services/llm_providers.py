@@ -3,9 +3,8 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Iterator, List, Optional, TypedDict
-from anthropic import Anthropic
+from openai import OpenAI
 
 
 class ChatTurn(TypedDict):
@@ -50,30 +49,32 @@ class LLMProvider(ABC):
         pass
 
 
-class AnthropicProvider(LLMProvider):
-    """Anthropic Claude provider."""
+class OpenAIProvider(LLMProvider):
+    """OpenAI chat completions provider."""
 
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "claude-haiku-4-5",
+        model: str = "gpt-5.6-luna",
     ):
         """
-        Initialize the Anthropic provider.
+        Initialize the OpenAI provider.
 
         Args:
-            api_key: Anthropic API key (if None, reads from ANTHROPIC_API_KEY env var)
-            model: Model to use (default: claude-haiku-4-5)
+            api_key: OpenAI API key (if None, reads from OPENAI_API_KEY env var)
+            model: Model to use (default: gpt-5.6-luna -- OpenAI's current
+                cost-optimized tier, matching the role claude-haiku-4-5 played
+                before this: one-shot summarization, not complex reasoning)
         """
-        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError(
-                "Anthropic API key must be provided or set in ANTHROPIC_API_KEY environment variable"
+                "OpenAI API key must be provided or set in OPENAI_API_KEY environment variable"
             )
 
         self.model = model
-        self.client = Anthropic(api_key=self.api_key)
-        logger.info(f"Initialized Anthropic provider with model: {self.model}")
+        self.client = OpenAI(api_key=self.api_key)
+        logger.info(f"Initialized OpenAI provider with model: {self.model}")
 
     def generate(
         self,
@@ -82,7 +83,7 @@ class AnthropicProvider(LLMProvider):
         temperature: float = 0.7,
     ) -> str:
         """
-        Generate text using Claude.
+        Generate text using OpenAI's Chat Completions API.
 
         Args:
             prompt: The input prompt
@@ -90,25 +91,27 @@ class AnthropicProvider(LLMProvider):
             temperature: Sampling temperature (0.0 to 1.0)
 
         Returns:
-            Generated text from Claude
+            Generated text
         """
         logger.info(f"Generating response with {self.model}")
 
         try:
-            message = self.client.messages.create(
+            completion = self.client.chat.completions.create(
                 model=self.model,
-                max_tokens=max_tokens,
+                # `max_completion_tokens` is OpenAI's current recommended param
+                # (covers reasoning tokens too) -- `max_tokens` is legacy.
+                max_completion_tokens=max_tokens,
                 temperature=temperature,
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            response_text = message.content[0].text
+            response_text = completion.choices[0].message.content or ""
             logger.info(f"Generated {len(response_text)} characters")
 
             return response_text
 
         except Exception as e:
-            logger.error(f"Error generating with Anthropic: {e}")
+            logger.error(f"Error generating with OpenAI: {e}")
             raise
 
     def stream_chat(
@@ -119,15 +122,20 @@ class AnthropicProvider(LLMProvider):
         temperature: float = 0.7,
     ) -> Iterator[str]:
         logger.info(f"Streaming chat with {self.model} ({len(messages)} messages)")
-        kwargs = {
-            "model": self.model,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "messages": messages,
-        }
-        if system:
-            kwargs["system"] = system
 
-        with self.client.messages.stream(**kwargs) as stream:
-            for text in stream.text_stream:
-                yield text
+        chat_messages: List[dict] = []
+        if system:
+            chat_messages.append({"role": "system", "content": system})
+        chat_messages.extend(messages)
+
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            max_completion_tokens=max_tokens,
+            temperature=temperature,
+            messages=chat_messages,
+            stream=True,
+        )
+
+        for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
