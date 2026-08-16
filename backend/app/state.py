@@ -17,13 +17,17 @@ from fastapi import HTTPException
 from .config import DATA_DIR, DEFAULT_MAX_CONCURRENT, PROMPTS_DIR, STORAGE_BACKEND
 from src.pipeline.paper_pipeline import PaperPipeline
 from src.services.arxiv_service import ArxivService
+from src.services.artifact_store import ArtifactStore
 from src.services.audio_service import AudioService
+from src.services.azure_sql_metadata_service import AzureSqlMetadataService
 from src.services.blob_storage_service import BlobStorageService
 from src.services.llm_providers import OpenAIProvider
 from src.services.llm_service import LLMService
-from src.services.azure_sql_metadata_service import AzureSqlMetadataService
+from src.services.local_file_storage_service import LocalFileStorageService
+from src.services.metadata_store import MetadataStore
 from src.services.pdf_service import PdfService
 from src.services.processing_manager import ProcessingManager
+from src.services.sqlite_metadata_service import SqliteMetadataService
 from src.services.tts_providers import OpenAITTSProvider
 
 logger = logging.getLogger(__name__)
@@ -37,8 +41,8 @@ class AppState:
         self.pipeline: Optional[PaperPipeline] = None
         self.processing: Optional[ProcessingManager] = None
         self.llm_provider: Optional[OpenAIProvider] = None
-        self.blob_service: Optional[BlobStorageService] = None
-        self.metadata_service: Optional[AzureSqlMetadataService] = None
+        self.blob_service: Optional[ArtifactStore] = None
+        self.metadata_service: Optional[MetadataStore] = None
 
 
 state = AppState()
@@ -67,11 +71,14 @@ async def lifespan(_: object):
     tts_provider = OpenAITTSProvider(api_key=openai_api_key)
     audio_service = AudioService(provider=tts_provider)
 
-    blob_service: Optional[BlobStorageService] = None
-    metadata_service: Optional[AzureSqlMetadataService] = None
+    blob_service: ArtifactStore
+    metadata_service: MetadataStore
     if STORAGE_BACKEND == "azure":
         blob_service = BlobStorageService(account_name=os.environ["AZURE_STORAGE_ACCOUNT"])
         metadata_service = AzureSqlMetadataService()
+    else:
+        blob_service = LocalFileStorageService(root_dir=DATA_DIR / "papers")
+        metadata_service = SqliteMetadataService(db_path=DATA_DIR / "podcasts.db")
 
     pipeline = PaperPipeline(
         arxiv_service=arxiv_service,

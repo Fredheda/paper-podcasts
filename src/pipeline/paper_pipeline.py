@@ -4,11 +4,10 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import List, Optional
 
-if TYPE_CHECKING:
-    from ..services.blob_storage_service import BlobStorageService
-    from ..services.azure_sql_metadata_service import AzureSqlMetadataService
+from ..services.artifact_store import ArtifactStore
+from ..services.metadata_store import MetadataStore
 
 from .paper_workflow import PaperWorkflow
 from ..models.paper import Paper
@@ -107,8 +106,8 @@ class PaperPipeline:
         llm_service: LLMService,
         audio_service: AudioService,
         storage_dir: Path,
-        blob_service: Optional["BlobStorageService"] = None,
-        metadata_service: Optional["AzureSqlMetadataService"] = None,
+        blob_service: ArtifactStore,
+        metadata_service: MetadataStore,
     ):
         """
         Initialize the pipeline with required services.
@@ -119,10 +118,12 @@ class PaperPipeline:
             llm_service: Service for generating summaries
             audio_service: Service for generating audio
             storage_dir: Root directory for storing artifacts
-            blob_service: Optional Azure Blob backend -- when set, each
-                stage's output file is also uploaded there (STORAGE_BACKEND=azure)
-            metadata_service: Optional Azure SQL backend -- when set, paper
-                metadata is also upserted there on every state save
+            blob_service: Artifact store -- each stage's output file is
+                uploaded there after being written to disk (always present;
+                see backend/app/state.py for which concrete class based on
+                STORAGE_BACKEND)
+            metadata_service: Metadata store -- paper metadata is upserted
+                there on every state save (always present, same as above)
         """
         self.arxiv = arxiv_service
         self.pdf = pdf_service
@@ -137,21 +138,21 @@ class PaperPipeline:
 
         logger.info(f"Initialized pipeline with storage at: {self.storage_dir}")
 
-    def _maybe_upload(self, local_path: Path) -> None:
-        """Push one just-written local artifact to Blob, if configured.
+    def _upload_artifact(self, local_path: Path) -> None:
+        """Push one just-written local artifact to the artifact store.
 
         Local disk write always happens first and unconditionally (needed
         within this replica's run for the _load_*_result lazy-reload paths)
-        -- this only adds the durable copy on top.
+        -- this adds the durable copy on top. For STORAGE_BACKEND=local this
+        is a same-path no-op (see LocalFileStorageService.upload_file); for
+        azure it's the actual blob upload.
         """
-        if self.blob_service is None:
-            return
         try:
             blob_path = local_path.relative_to(self.storage_dir / "papers").as_posix()
             self.blob_service.upload_file(blob_path, local_path)
-            logger.debug(f"Uploaded {local_path} to blob path {blob_path}")
+            logger.debug(f"Uploaded {local_path} to artifact path {blob_path}")
         except Exception as e:
-            logger.warning(f"Failed to upload {local_path} to blob storage: {e}")
+            logger.warning(f"Failed to upload {local_path} to the artifact store: {e}")
 
     def process_paper(
         self,
@@ -254,7 +255,7 @@ class PaperPipeline:
 
             # Download paper
             result = self.arxiv.download_paper(paper, str(download_dir))
-            self._maybe_upload(result.pdf_path)
+            self._upload_artifact(result.pdf_path)
 
             workflow.complete_download()
             self._save_paper_state(paper)
@@ -293,7 +294,7 @@ class PaperPipeline:
                 output_dir=extract_dir,
                 base_filename=base_filename,
             )
-            self._maybe_upload(result.saved_path)
+            self._upload_artifact(result.saved_path)
 
             workflow.complete_extract()
             self._save_paper_state(paper)
@@ -336,7 +337,7 @@ class PaperPipeline:
                 output_dir=summary_dir,
                 prompt_name="summarize_paper",
             )
-            self._maybe_upload(result.saved_path)
+            self._upload_artifact(result.saved_path)
 
             logger.info(f"Summarized paper. Length of summary: {len(result.summary_text)} characters")
             workflow.complete_summarize()
@@ -379,7 +380,7 @@ class PaperPipeline:
                 output_dir=audio_dir,
                 base_filename=base_filename,
             )
-            self._maybe_upload(result.audio_path)
+            self._upload_artifact(result.audio_path)
 
             workflow.complete_audio_generation()
             self._save_paper_state(paper)
@@ -566,43 +567,12 @@ class PaperPipeline:
 
     def _save_paper_state(self, paper: Paper) -> None:
         """
-        Save paper state to disk for persistence across runs, and to Azure
-        SQL too if a metadata backend is configured.
+        Persist paper metadata to the metadata store.
 
         Args:
             paper: Paper to save
         """
         try:
-            state_file = paper.save_to_disk(self.storage_dir)
-            logger.debug(f"Saved paper state to {state_file}")
+            self.metadata_service.upsert_paper(paper)
         except Exception as e:
-            logger.warning(f"Failed to save paper state: {e}")
-
-        if self.metadata_service is not None:
-            try:
-                self.metadata_service.upsert_paper(paper)
-            except Exception as e:
-                logger.warning(f"Failed to save paper metadata to Azure SQL: {e}")
-
-    def load_paper(self, title: str) -> Optional[Paper]:
-        """
-        Load a paper's state from disk using its title.
-
-        This allows resuming processing across different script runs.
-
-        Args:
-            title: Title of the paper to load (will be cleaned automatically)
-
-        Returns:
-            Paper object if found, None otherwise
-
-        Example:
-            # In script run 1
-            result = pipeline.process_paper(paper, stages=["download", "extract"])
-
-            # In script run 2 (days later)
-            paper = pipeline.load_paper("Attention Is All You Need")
-            if paper:
-                result = pipeline.process_paper(paper, stages=["summarize"])
-        """
-        return Paper.load_from_disk(title, self.storage_dir)
+            logger.warning(f"Failed to save paper metadata: {e}")
