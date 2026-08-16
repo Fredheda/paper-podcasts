@@ -26,12 +26,6 @@ azure-storage-blob = "12.30.0"
 azure-identity = "1.25.3"
 mssql-python = "1.12.0"
 
-[tool.poetry.group.streamlit]
-optional = true
-
-[tool.poetry.group.streamlit.dependencies]
-streamlit = "1.52.2"
-
 [tool.poetry.group.dev.dependencies]
 pytest = "9.1.1"
 httpx = "0.28.1"
