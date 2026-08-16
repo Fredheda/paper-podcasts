@@ -3,7 +3,7 @@ summary, audio). Two implementations, selected once in backend/app/state.py
 based on STORAGE_BACKEND: BlobStorageService ("azure") and
 LocalFileStorageService ("local"). Both are always constructed -- callers
 never check which one is active. See
-docs/specs/2026-08-15-paper-podcasts-deployment.md.
+docs/paper-podcasts/specs/2026-08-15-paper-podcasts-deployment.md.
 """
 
 from __future__ import annotations

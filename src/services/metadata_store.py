@@ -4,7 +4,7 @@ STORAGE_BACKEND: AzureSqlMetadataService ("azure") and
 SqliteMetadataService ("local"). Both are always constructed -- callers
 never check which one is active, and both return byte-for-byte the same row
 shape (datetime columns come back as datetime objects on both sides). See
-docs/specs/2026-08-15-paper-podcasts-deployment.md.
+docs/paper-podcasts/specs/2026-08-15-paper-podcasts-deployment.md.
 """
 
 from __future__ import annotations

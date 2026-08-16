@@ -9,7 +9,7 @@ These routes power the library tab:
 Storage backend: when STORAGE_BACKEND=azure, reads/writes go through
 `state.metadata_service` (Azure SQL) and `state.blob_service` (Blob Storage)
 instead of the local-disk helpers in `library_store.py`. See
-docs/specs/2026-08-15-paper-podcasts-deployment.md.
+docs/paper-podcasts/specs/2026-08-15-paper-podcasts-deployment.md.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """Azure Blob Storage wrapper for paper artifacts (PDF, extracted text,
 summary, audio). Used only when STORAGE_BACKEND=azure -- see
-docs/specs/2026-08-15-paper-podcasts-deployment.md.
+docs/paper-podcasts/specs/2026-08-15-paper-podcasts-deployment.md.
 """
 
 from __future__ import annotations
