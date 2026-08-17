@@ -21,6 +21,10 @@ type ToastTone = 'success' | 'info' | 'error';
 type ToastState = { tone: ToastTone; message: string };
 
 const POLL_INTERVAL_MS = 2500;
+// After this long with no queued/active job, stop polling -- both container
+// apps have a 5-minute scale-to-zero cooldown that never gets a chance to
+// complete while something keeps polling every 2.5s, even with an idle tab.
+const IDLE_PAUSE_MS = 60_000;
 
 function formatAuthors(authors: { name?: string }[], max = 3): string {
   if (!authors.length) return 'Unknown authors';
@@ -292,6 +296,21 @@ export default function App(): JSX.Element {
 
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
 
+  // Refs, not state: read/written from the polling interval and from
+  // event handlers without needing to re-run the polling effect.
+  const idlePausedRef = useRef(false);
+  const idleTimerRef = useRef<number | null>(null);
+  const refreshNowRef = useRef<() => void>(() => {});
+
+  function wakePolling(): void {
+    idlePausedRef.current = false;
+    if (idleTimerRef.current !== null) {
+      window.clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+    refreshNowRef.current();
+  }
+
   const [libraryStatusFilter, setLibraryStatusFilter] = useState<LibraryStatusFilter>('all');
   const [listenFilter, setListenFilter] = useState<ListenFilter>('all');
   const [librarySearchQuery, setLibrarySearchQuery] = useState<string>('');
@@ -410,9 +429,15 @@ export default function App(): JSX.Element {
       }
     }
 
+    refreshNowRef.current = () => void refresh();
+
     void refresh();
     const timer = window.setInterval(() => {
-      void refresh();
+      // Paused polls are skipped client-side, not just slowed down --
+      // otherwise the backend never stops seeing traffic and can't scale to
+      // zero. See the idle-timer and visibilitychange effects below for how
+      // idlePausedRef gets set and cleared.
+      if (!idlePausedRef.current) void refresh();
     }, POLL_INTERVAL_MS);
 
     return () => {
@@ -421,11 +446,40 @@ export default function App(): JSX.Element {
     };
   }, []);
 
+  useEffect(() => {
+    const hasActivity = (jobsData?.counts.active ?? 0) > 0 || (jobsData?.counts.queued ?? 0) > 0;
+
+    if (hasActivity) {
+      idlePausedRef.current = false;
+      if (idleTimerRef.current !== null) {
+        window.clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (idleTimerRef.current === null) {
+      idleTimerRef.current = window.setTimeout(() => {
+        idlePausedRef.current = true;
+        idleTimerRef.current = null;
+      }, IDLE_PAUSE_MS);
+    }
+  }, [jobsData]);
+
+  useEffect(() => {
+    function handleVisibilityChange(): void {
+      if (document.visibilityState === 'visible') wakePolling();
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   async function onSearch(event: FormEvent): Promise<void> {
     event.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
 
+    wakePolling();
     setSearching(true);
     setSearchError(null);
     setQueueMessage(null);
@@ -445,6 +499,7 @@ export default function App(): JSX.Element {
   async function onEnqueue(): Promise<void> {
     if (!selectedPapers.length) return;
 
+    wakePolling();
     try {
       const result = await enqueuePapers(selectedPapers);
       setQueueMessage(`Queued ${result.queued_count}, skipped ${result.skipped_count} already active/queued.`);
