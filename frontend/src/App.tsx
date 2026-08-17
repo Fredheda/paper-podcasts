@@ -17,7 +17,6 @@ const MAX_CHAT_PAPERS = 5;
 type Tab = 'search' | 'queue' | 'library';
 type LibraryStatusFilter = 'all' | 'completed' | 'in progress';
 type ListenFilter = 'all' | 'unlistened' | 'listened';
-type ContentTab = 'abstract' | 'summary';
 type ToastTone = 'success' | 'info' | 'error';
 type ToastState = { tone: ToastTone; message: string };
 
@@ -298,7 +297,6 @@ export default function App(): JSX.Element {
   const [librarySearchQuery, setLibrarySearchQuery] = useState<string>('');
   const [contentByPaperId, setContentByPaperId] = useState<Record<string, LibraryContent>>({});
   const [contentLoadingIds, setContentLoadingIds] = useState<Set<string>>(new Set());
-  const [activeContentTabByPaperId, setActiveContentTabByPaperId] = useState<Record<string, ContentTab>>({});
   const [listenUpdatingIds, setListenUpdatingIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState | null>(null);
   const [selectedForChat, setSelectedForChat] = useState<Set<string>>(new Set());
@@ -495,10 +493,21 @@ export default function App(): JSX.Element {
     }
   }
 
-  function setActiveContentTab(arxivId: string, contentTab: ContentTab): void {
-    setActiveContentTabByPaperId((previous) => ({ ...previous, [arxivId]: contentTab }));
-    if (contentTab !== 'abstract') void loadContentForPaper(arxivId);
-  }
+  const libraryArxivIds = library.map((item) => item.arxiv_id).join(',');
+
+  useEffect(() => {
+    // Keyed off a stable string of IDs, not the `library` array itself --
+    // the 2.5s poll (POLL_INTERVAL_MS) replaces `library` with a new array
+    // reference every tick even when its contents haven't changed, which
+    // would otherwise re-run this effect constantly. loadContentForPaper's
+    // own cache/in-flight guards make repeat calls for already-loaded
+    // papers a no-op regardless, but keying off the ID set avoids even
+    // attempting them.
+    if (!libraryArxivIds) return;
+    for (const arxivId of libraryArxivIds.split(',')) {
+      void loadContentForPaper(arxivId);
+    }
+  }, [libraryArxivIds]);
 
   async function onToggleListenStatus(item: LibraryItem): Promise<void> {
     const nextStatus = item.listen_status === 'listened' ? 'unlistened' : 'listened';
@@ -802,7 +811,6 @@ export default function App(): JSX.Element {
           ) : (
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
               {filteredLibrary.map((item, index) => {
-                const activeContentTab = activeContentTabByPaperId[item.arxiv_id] || 'abstract';
                 const content = contentByPaperId[item.arxiv_id];
                 const isLoadingContent = contentLoadingIds.has(item.arxiv_id);
                 const isListenUpdating = listenUpdatingIds.has(item.arxiv_id);
@@ -874,31 +882,10 @@ export default function App(): JSX.Element {
                       )}
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        className={`tab-btn ${activeContentTab === 'abstract' ? 'tab-btn-active' : ''}`}
-                        onClick={() => setActiveContentTab(item.arxiv_id, 'abstract')}
-                      >
-                        Abstract
-                      </button>
-                      <button
-                        className={`tab-btn ${activeContentTab === 'summary' ? 'tab-btn-active' : ''}`}
-                        onClick={() => setActiveContentTab(item.arxiv_id, 'summary')}
-                      >
-                        Summary
-                      </button>
-                    </div>
-
                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
-                      {activeContentTab === 'abstract' && <p className="whitespace-pre-wrap">{item.abstract}</p>}
-
-                      {activeContentTab === 'summary' && (
-                        <>
-                          {isLoadingContent && <p className="text-slate-500">Loading summary...</p>}
-                          {!isLoadingContent && (
-                            <RichSummaryBlock summaryText={content?.summary_text || ''} />
-                          )}
-                        </>
+                      {isLoadingContent && <p className="text-slate-500">Loading summary...</p>}
+                      {!isLoadingContent && (
+                        <RichSummaryBlock summaryText={content?.summary_text || ''} />
                       )}
                     </div>
                   </article>
