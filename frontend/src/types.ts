@@ -68,7 +68,6 @@ export type LibraryItem = {
 export type LibraryContent = {
   arxiv_id: string;
   summary_text: string | null;
-  extract_text: string | null;
 };
 
 export type ChatMessage = {

@@ -2,7 +2,7 @@
 
 These routes power the library tab:
 - list processed papers
-- fetch summary/full text
+- fetch summary text (full text is read on arXiv, not served here)
 - stream audio
 - update listened/unlistened state
 
@@ -59,7 +59,8 @@ def get_library() -> List[LibraryItemSchema]:
 def get_library_content(
     arxiv_id: str = ApiPath(..., **ARXIV_ID_PATH),
 ) -> LibraryContentSchema:
-    """Return summary text and extracted full text for a single paper."""
+    """Return summary text for a single paper. Full text is read on arXiv,
+    not served here -- see item.arxiv_url on the library list."""
     normalized = normalize_arxiv_id(arxiv_id)
     metadata = state.metadata_service.get_paper(normalized)
     if metadata is None:
@@ -67,20 +68,14 @@ def get_library_content(
 
     cleaned_title = metadata["cleaned_title"]
     summary_path = f"{cleaned_title}/summaries/summary_{cleaned_title}.txt"
-    extract_path = f"{cleaned_title}/extracted/{cleaned_title}.md"
 
     summary_text = (
         state.blob_service.download(summary_path).decode("utf-8")
         if state.blob_service.exists(summary_path)
         else None
     )
-    extract_text = (
-        state.blob_service.download(extract_path).decode("utf-8")
-        if state.blob_service.exists(extract_path)
-        else None
-    )
 
-    return LibraryContentSchema(arxiv_id=normalized, summary_text=summary_text, extract_text=extract_text)
+    return LibraryContentSchema(arxiv_id=normalized, summary_text=summary_text)
 
 
 @router.get("/{arxiv_id}/audio")

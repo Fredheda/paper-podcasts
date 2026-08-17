@@ -88,7 +88,6 @@ class LibraryItemSchema(BaseModel):
 class LibraryContentSchema(BaseModel):
     arxiv_id: str
     summary_text: Optional[str] = None
-    extract_text: Optional[str] = None
 
 
 class ListenStatusUpdateRequest(BaseModel):

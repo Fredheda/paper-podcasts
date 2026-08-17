@@ -17,7 +17,7 @@ const MAX_CHAT_PAPERS = 5;
 type Tab = 'search' | 'queue' | 'library';
 type LibraryStatusFilter = 'all' | 'completed' | 'in progress';
 type ListenFilter = 'all' | 'unlistened' | 'listened';
-type ContentTab = 'abstract' | 'summary' | 'full_text';
+type ContentTab = 'abstract' | 'summary';
 type ToastTone = 'success' | 'info' | 'error';
 type ToastState = { tone: ToastTone; message: string };
 
@@ -301,7 +301,6 @@ export default function App(): JSX.Element {
   const [activeContentTabByPaperId, setActiveContentTabByPaperId] = useState<Record<string, ContentTab>>({});
   const [listenUpdatingIds, setListenUpdatingIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [fullTextModal, setFullTextModal] = useState<{ title: string; text: string } | null>(null);
   const [selectedForChat, setSelectedForChat] = useState<Set<string>>(new Set());
 
   function toggleChatSelection(arxivId: string): void {
@@ -365,16 +364,6 @@ export default function App(): JSX.Element {
     const timer = window.setTimeout(() => setToast(null), 2800);
     return () => window.clearTimeout(timer);
   }, [toast]);
-
-  useEffect(() => {
-    function handleEscape(event: KeyboardEvent): void {
-      if (event.key === 'Escape') {
-        setFullTextModal(null);
-      }
-    }
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
 
   useEffect(() => {
     function handleGlobalShortcuts(event: KeyboardEvent): void {
@@ -509,31 +498,6 @@ export default function App(): JSX.Element {
   function setActiveContentTab(arxivId: string, contentTab: ContentTab): void {
     setActiveContentTabByPaperId((previous) => ({ ...previous, [arxivId]: contentTab }));
     if (contentTab !== 'abstract') void loadContentForPaper(arxivId);
-  }
-
-  async function openFullTextModal(item: LibraryItem): Promise<void> {
-    let content = contentByPaperId[item.arxiv_id];
-    if (!content) {
-      try {
-        content = await fetchLibraryContent(item.arxiv_id);
-        setContentByPaperId((previous) => ({ ...previous, [item.arxiv_id]: content as LibraryContent }));
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to load full text.';
-        setLibraryError(message);
-        setToast({ tone: 'error', message });
-        return;
-      }
-    }
-
-    if (!content?.extract_text) {
-      setToast({ tone: 'info', message: 'No extracted full text is available for this paper yet.' });
-      return;
-    }
-
-    setFullTextModal({
-      title: item.title,
-      text: content.extract_text
-    });
   }
 
   async function onToggleListenStatus(item: LibraryItem): Promise<void> {
@@ -923,15 +887,6 @@ export default function App(): JSX.Element {
                       >
                         Summary
                       </button>
-                      <button
-                        className={`tab-btn ${activeContentTab === 'full_text' ? 'tab-btn-active' : ''}`}
-                        onClick={() => {
-                          setActiveContentTab(item.arxiv_id, 'full_text');
-                          void openFullTextModal(item);
-                        }}
-                      >
-                        Full text
-                      </button>
                     </div>
 
                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
@@ -942,17 +897,6 @@ export default function App(): JSX.Element {
                           {isLoadingContent && <p className="text-slate-500">Loading summary...</p>}
                           {!isLoadingContent && (
                             <RichSummaryBlock summaryText={content?.summary_text || ''} />
-                          )}
-                        </>
-                      )}
-
-                      {activeContentTab === 'full_text' && (
-                        <>
-                          {isLoadingContent && <p className="text-slate-500">Loading extracted text...</p>}
-                          {!isLoadingContent && (
-                            <p className="max-h-72 overflow-y-auto whitespace-pre-wrap">
-                              {content?.extract_text || 'No extracted text available.'}
-                            </p>
                           )}
                         </>
                       )}
@@ -972,21 +916,6 @@ export default function App(): JSX.Element {
       )}
 
       {toast && <Toast tone={toast.tone} message={toast.message} />}
-      {fullTextModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
-          <div className="flex h-[88vh] w-full max-w-6xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-              <h3 className="line-clamp-1 pr-4 text-sm font-bold text-ink-950 md:text-base">{fullTextModal.title}</h3>
-              <button className="soft-btn" onClick={() => setFullTextModal(null)}>
-                Close
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{fullTextModal.text}</pre>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
