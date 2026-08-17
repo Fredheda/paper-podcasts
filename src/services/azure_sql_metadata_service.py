@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from datetime import datetime
 from typing import Any, Optional
 
@@ -23,6 +24,16 @@ from ..models.paper import Paper
 from .metadata_store import MetadataStore
 
 logger = logging.getLogger(__name__)
+
+# PlaygroundDB is Azure SQL serverless (60 min auto-pause). The first query
+# after a pause hits a resume window where every connection attempt raises
+# OperationalError ("not currently available" / TCP timeout) until compute
+# finishes waking up -- observed taking up to ~45s in practice, well beyond
+# what's reasonable to block a single request on. This retry only smooths
+# over the tail end of that window (a few seconds); the frontend's 2.5s poll
+# loop is what actually rides out the rest of it across requests.
+_CONNECT_MAX_ATTEMPTS = 3
+_CONNECT_RETRY_DELAY_SECONDS = 1.5
 
 
 class AzureSqlMetadataService(MetadataStore):
@@ -51,6 +62,22 @@ class AzureSqlMetadataService(MetadataStore):
             auth = "Authentication=ActiveDirectoryDefault;"
         return f"Server={self.server};Database={self.database};{auth}Encrypt=yes;"
 
+    def _connect(self) -> Any:
+        """Open a connection, retrying a couple of times on OperationalError
+        (see module-level comment on PlaygroundDB's auto-pause)."""
+        for attempt in range(1, _CONNECT_MAX_ATTEMPTS + 1):
+            try:
+                return mssql_python.connect(self._connection_string())
+            except mssql_python.OperationalError as e:
+                if attempt == _CONNECT_MAX_ATTEMPTS:
+                    raise
+                logger.warning(
+                    f"SQL connect attempt {attempt}/{_CONNECT_MAX_ATTEMPTS} failed "
+                    f"(likely PlaygroundDB resuming from auto-pause), retrying in "
+                    f"{_CONNECT_RETRY_DELAY_SECONDS}s: {e}"
+                )
+                time.sleep(_CONNECT_RETRY_DELAY_SECONDS)
+
     def upsert_paper(self, paper: Paper) -> None:
         """Insert or update one paper's metadata row, keyed by arxiv_id."""
         authors_json = json.dumps(
@@ -67,7 +94,7 @@ class AzureSqlMetadataService(MetadataStore):
             published, paper.status, paper.listen_status, last_listened_at,
         )
 
-        conn = mssql_python.connect(self._connection_string())
+        conn = self._connect()
         try:
             cursor = conn.cursor()
             cursor.execute(
@@ -93,7 +120,7 @@ class AzureSqlMetadataService(MetadataStore):
 
     def get_paper(self, arxiv_id: str) -> Optional[dict[str, Any]]:
         """Return one paper's raw column dict, or None if not found."""
-        conn = mssql_python.connect(self._connection_string())
+        conn = self._connect()
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM papers WHERE arxiv_id = ?", (arxiv_id,))
@@ -107,7 +134,7 @@ class AzureSqlMetadataService(MetadataStore):
 
     def list_papers(self) -> list[dict[str, Any]]:
         """Return all paper rows, most recently updated first."""
-        conn = mssql_python.connect(self._connection_string())
+        conn = self._connect()
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM papers ORDER BY updated_at DESC")
@@ -120,7 +147,7 @@ class AzureSqlMetadataService(MetadataStore):
         self, arxiv_id: str, listen_status: str, last_listened_at: Optional[datetime]
     ) -> None:
         """Persist a listened/unlistened change for one paper."""
-        conn = mssql_python.connect(self._connection_string())
+        conn = self._connect()
         try:
             cursor = conn.cursor()
             cursor.execute(
