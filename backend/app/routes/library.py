@@ -40,7 +40,6 @@ def _row_to_library_item(row: dict[str, Any]) -> dict[str, Any]:
         "arxiv_id": arxiv_id,
         "authors": json.loads(row["authors"]),
         "status": row["status"],
-        "abstract": row["abstract"],
         "listen_status": row["listen_status"],
         "last_listened_at": row["last_listened_at"].isoformat() if row["last_listened_at"] else None,
         "arxiv_url": f"https://arxiv.org/abs/{arxiv_id}",

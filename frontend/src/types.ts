@@ -58,7 +58,6 @@ export type LibraryItem = {
   arxiv_id: string;
   authors: { name?: string }[];
   status: string;
-  abstract: string;
   listen_status: string;
   last_listened_at: string | null;
   arxiv_url: string | null;

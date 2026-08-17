@@ -78,7 +78,6 @@ class LibraryItemSchema(BaseModel):
     arxiv_id: str
     authors: List[dict]
     status: str
-    abstract: str
     listen_status: str
     last_listened_at: Optional[str]
     arxiv_url: Optional[str] = None

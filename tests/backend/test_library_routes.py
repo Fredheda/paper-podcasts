@@ -51,6 +51,7 @@ def test_get_library_reads_from_metadata_service(client):
     body = response.json()
     assert body[0]["arxiv_id"] == "2301.12345"
     assert body[0]["audio_url"] == "/api/library/2301.12345/audio"
+    assert "abstract" not in body[0]
 
 
 def test_get_library_content_streams_from_artifact_store(client):
