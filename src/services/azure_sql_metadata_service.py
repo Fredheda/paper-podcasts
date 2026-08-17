@@ -41,7 +41,12 @@ class AzureSqlMetadataService(MetadataStore):
 
     def _connection_string(self) -> str:
         if self.managed_identity_client_id:
-            auth = f"Authentication=ActiveDirectoryMSI;User Id={self.managed_identity_client_id};"
+            # mssql_python's connection-string parser only recognizes `Uid`
+            # (-> canonical `UID`) -- `User Id` is rejected outright as an
+            # unknown keyword. Confirmed against the real deployed container,
+            # not just docs (the mocked unit tests only assert a substring,
+            # so this slipped past them).
+            auth = f"Authentication=ActiveDirectoryMSI;Uid={self.managed_identity_client_id};"
         else:
             auth = "Authentication=ActiveDirectoryDefault;"
         return f"Server={self.server};Database={self.database};{auth}Encrypt=yes;"

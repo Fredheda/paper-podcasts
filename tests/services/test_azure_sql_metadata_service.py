@@ -42,7 +42,7 @@ def test_connection_string_uses_msi_when_client_id_present(env, monkeypatch):
     monkeypatch.setenv("AZURE_CLIENT_ID", "abc-123")
     service = AzureSqlMetadataService()
     conn_str = service._connection_string()
-    assert "Authentication=ActiveDirectoryMSI;User Id=abc-123;" in conn_str
+    assert "Authentication=ActiveDirectoryMSI;Uid=abc-123;" in conn_str
 
 
 def test_connection_string_uses_default_auth_locally(env):
