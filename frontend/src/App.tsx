@@ -473,7 +473,13 @@ export default function App(): JSX.Element {
   }
 
   async function loadContentForPaper(arxivId: string): Promise<void> {
-    if (contentByPaperId[arxivId]) return;
+    // Only skip once we actually have summary text: the content endpoint
+    // returns summary_text: null (200, not 404) whenever the summary blob
+    // doesn't exist yet, which is true from right after the download stage
+    // (papers are upserted into the metadata store per-stage, well before
+    // summarize runs) -- caching that null forever would mean a paper's
+    // summary never appears once it's ready, short of a full page reload.
+    if (contentByPaperId[arxivId]?.summary_text) return;
     if (contentLoadingIds.has(arxivId)) return;
 
     setContentLoadingIds((previous) => new Set(previous).add(arxivId));
@@ -493,21 +499,25 @@ export default function App(): JSX.Element {
     }
   }
 
-  const libraryArxivIds = library.map((item) => item.arxiv_id).join(',');
+  // Keyed off id:status pairs, not just ids -- a status change (e.g. a paper
+  // advancing past the summarize stage) needs to re-trigger the fetch below,
+  // since that's when summary_text actually becomes available.
+  const libraryContentKey = library.map((item) => `${item.arxiv_id}:${item.status}`).join(',');
 
   useEffect(() => {
-    // Keyed off a stable string of IDs, not the `library` array itself --
-    // the 2.5s poll (POLL_INTERVAL_MS) replaces `library` with a new array
-    // reference every tick even when its contents haven't changed, which
-    // would otherwise re-run this effect constantly. loadContentForPaper's
-    // own cache/in-flight guards make repeat calls for already-loaded
-    // papers a no-op regardless, but keying off the ID set avoids even
-    // attempting them.
-    if (!libraryArxivIds) return;
-    for (const arxivId of libraryArxivIds.split(',')) {
+    // Keyed off a stable string, not the `library` array itself -- the 2.5s
+    // poll (POLL_INTERVAL_MS) replaces `library` with a new array reference
+    // every tick even when its contents haven't changed, which would
+    // otherwise re-run this effect constantly. loadContentForPaper's own
+    // cache/in-flight guards make repeat calls for papers that already have
+    // summary text a no-op regardless, but keying off id:status avoids even
+    // attempting those.
+    if (!libraryContentKey) return;
+    for (const entry of libraryContentKey.split(',')) {
+      const arxivId = entry.slice(0, entry.lastIndexOf(':'));
       void loadContentForPaper(arxivId);
     }
-  }, [libraryArxivIds]);
+  }, [libraryContentKey]);
 
   async function onToggleListenStatus(item: LibraryItem): Promise<void> {
     const nextStatus = item.listen_status === 'listened' ? 'unlistened' : 'listened';
