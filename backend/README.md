@@ -56,7 +56,12 @@ in both cases.
 ## Notes
 
 - Processing is handled by a background `ProcessingManager` with multi-worker concurrency.
-- Artifacts are persisted to disk and survive restarts.
+- Artifacts are always written to local disk first (needed for lazy-reload
+  within a run), then durably persisted through the `ArtifactStore` on top
+  of that: a same-path no-op for `local` (disk *is* the durable copy), an
+  actual Blob Storage upload for `azure`. On Container Apps the container
+  filesystem itself is ephemeral and does not survive a restart/redeploy —
+  Blob Storage is what actually survives there, not local disk.
 
 ## Architecture
 
@@ -65,7 +70,8 @@ The backend is split into small modules so responsibilities are explicit:
 - `app/main.py`: app assembly only (create app, attach middleware, include routers)
 - `app/config.py`: environment loading, path bootstrap, shared config constants
 - `app/state.py`: startup/shutdown lifecycle and long-lived service initialization
-- `app/security.py`: CORS setup plus HTTPS/API-key/rate-limit middleware
+- `app/security.py`: HTTPS/API-key/rate-limit middleware (no CORS — see the
+  note above)
 - `app/mappers.py`: API schema <-> domain model conversion helpers
 - `app/arxiv_ids.py`: shared arXiv ID normalization
 - `app/routes/health.py`: liveness endpoint

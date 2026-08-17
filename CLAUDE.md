@@ -193,12 +193,31 @@ Workflows: provision or change infra with `infra/deploy.sh [tag]`. Steady
 state (code changes): `scripts/ship.sh` (build+push then roll both apps;
 needs a clean tree + `az login`). Grant access with
 `scripts/approve-user.sh <email>`. Both apps scale to zero
-(`minReplicas: 0`) — first request after idle takes ~15–40s. A replica dying
-mid-processing loses only that in-flight stage's LLM/TTS spend; re-triggering
-resumes from the last durably-saved stage (see the spec's "Error handling").
-The environment omits `appLogsConfiguration` (no Log Analytics meter); live
-logs via `az containerapp logs show --follow`. See `DEPLOYMENT.md` for the
-step-by-step change workflow and `EXPIRATIONS.md` for renewal reminders.
+(`minReplicas: 0`, `cooldownPeriod: 300`) — first request after idle takes
+~15–40s. A replica dying mid-processing loses only that in-flight stage's
+LLM/TTS spend; re-triggering resumes from the last durably-saved stage (see
+the spec's "Error handling"). The environment omits `appLogsConfiguration`
+(no Log Analytics meter); live logs via `az containerapp logs show
+--follow`. See `DEPLOYMENT.md` for the step-by-step change workflow and
+`EXPIRATIONS.md` for renewal reminders.
+
+**Three independent idle/wake clocks, not one.** Besides the two container
+apps' own 5-minute cooldown, `PlaygroundDB` (the shared Azure SQL server)
+runs on the serverless tier with its own 60-minute auto-pause
+(`autoPauseDelayInMinutes: 60`) — fully independent of the container apps'
+state. The first query after a pause hits a resume window (observed up to
+~45s) where every connection raises `mssql_python.OperationalError`
+("not currently available" / TCP timeout) until compute finishes waking up;
+`AzureSqlMetadataService._connect()` retries a few times with a short
+backoff to smooth over the tail of that window, but a fresh pause can still
+surface a transient error on `/api/library` or `/api/jobs` for several
+seconds. This is expected serverless behavior, not a bug — see
+`docs/paper-podcasts/plans/2026-08-15-paper-podcasts-deployment.md` Task 16
+for how it was diagnosed. Separately, the frontend's own polling
+(`frontend/src/App.tsx`, `POLL_INTERVAL_MS`) pauses itself after 60s with no
+active/queued job (`IDLE_PAUSE_MS`) and resumes immediately on tab focus or
+a search/enqueue action — without that, an open tab would poll forever and
+neither container app's cooldown could ever complete.
 
 # Fred's Personal Claude Preferences
 

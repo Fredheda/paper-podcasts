@@ -19,7 +19,9 @@ Apps**:
 
 Images live in ACR (`acrchatbotfredheda.azurecr.io`), tagged with the git
 commit SHA. The frontend is locked behind Entra Easy Auth. Both apps scale to
-zero when idle.
+zero when idle — and so does `PlaygroundDB` (Azure SQL), on its own,
+independent 60-minute clock. See CLAUDE.md's "Deployment (Azure Container
+Apps)" section for the full three-clock breakdown.
 
 ## Step 1 — Make your change
 
@@ -74,3 +76,16 @@ unchanged tag now points at a different digest. `./scripts/ship.sh` avoids
 this by refusing a dirty tree (so a new commit — and thus a new tag — always
 exists before shipping). If you ever do need to force a fresh revision
 manually: `az containerapp update -n <app> -g rg-chatbot --image <image> --revision-suffix <unique>`.
+
+## Known gotcha: transient 500s right after a long idle period
+
+If nothing has hit the app in over 60 minutes, `PlaygroundDB` auto-pauses
+(serverless tier). The next request wakes it, but the resume can take up to
+~45s — during that window `/api/library` and `/api/jobs` can throw a real
+500 (`mssql_python.OperationalError`: "database not currently available" or
+a TCP timeout), even though nothing is actually broken.
+`AzureSqlMetadataService._connect()` retries a few times with a short
+backoff to absorb the tail end of this, but won't fully hide a fresh pause
+within a single request — if you see this while testing right after a long
+gap, it's very likely this, not a regression. It self-resolves; no action
+needed beyond waiting a few seconds and retrying.
