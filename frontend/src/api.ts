@@ -8,10 +8,11 @@ import type {
   SearchResponse
 } from './types';
 
-// `??` (not `||`) matters here: an explicit empty string (same-origin,
-// relative paths -- the production setting, via .env.production) must NOT
-// fall back to the dev default. Only a genuinely unset var should.
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+// Relative paths (same-origin) by default: in dev, vite.config.ts's server.proxy
+// forwards /api and /health to the backend; in prod, server.js does the same.
+// VITE_API_BASE_URL only needs setting if the backend ever lives on a
+// genuinely different origin than whatever's serving this frontend.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {

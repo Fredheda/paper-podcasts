@@ -7,6 +7,13 @@ export default defineConfig({
   server: {
     host: 'localhost',
     port: 5173,
-    open: true
+    open: true,
+    // Mirrors server.js's prod proxy: the browser only ever talks to this
+    // dev server (same-origin), which forwards /api and /health to the
+    // backend server-side -- so CORS never comes up in dev either.
+    proxy: {
+      '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      '/health': { target: 'http://localhost:8000', changeOrigin: true }
+    }
   }
 });
