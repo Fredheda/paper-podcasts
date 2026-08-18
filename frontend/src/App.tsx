@@ -17,11 +17,14 @@ const MAX_CHAT_PAPERS = 5;
 type Tab = 'search' | 'queue' | 'library';
 type LibraryStatusFilter = 'all' | 'completed' | 'in progress';
 type ListenFilter = 'all' | 'unlistened' | 'listened';
-type ContentTab = 'abstract' | 'summary' | 'full_text';
 type ToastTone = 'success' | 'info' | 'error';
 type ToastState = { tone: ToastTone; message: string };
 
 const POLL_INTERVAL_MS = 2500;
+// After this long with no queued/active job, stop polling -- both container
+// apps have a 5-minute scale-to-zero cooldown that never gets a chance to
+// complete while something keeps polling every 2.5s, even with an idle tab.
+const IDLE_PAUSE_MS = 60_000;
 
 function formatAuthors(authors: { name?: string }[], max = 3): string {
   if (!authors.length) return 'Unknown authors';
@@ -293,15 +296,28 @@ export default function App(): JSX.Element {
 
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
 
+  // Refs, not state: read/written from the polling interval and from
+  // event handlers without needing to re-run the polling effect.
+  const idlePausedRef = useRef(false);
+  const idleTimerRef = useRef<number | null>(null);
+  const refreshNowRef = useRef<() => void>(() => {});
+
+  function wakePolling(): void {
+    idlePausedRef.current = false;
+    if (idleTimerRef.current !== null) {
+      window.clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+    refreshNowRef.current();
+  }
+
   const [libraryStatusFilter, setLibraryStatusFilter] = useState<LibraryStatusFilter>('all');
   const [listenFilter, setListenFilter] = useState<ListenFilter>('all');
   const [librarySearchQuery, setLibrarySearchQuery] = useState<string>('');
   const [contentByPaperId, setContentByPaperId] = useState<Record<string, LibraryContent>>({});
   const [contentLoadingIds, setContentLoadingIds] = useState<Set<string>>(new Set());
-  const [activeContentTabByPaperId, setActiveContentTabByPaperId] = useState<Record<string, ContentTab>>({});
   const [listenUpdatingIds, setListenUpdatingIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [fullTextModal, setFullTextModal] = useState<{ title: string; text: string } | null>(null);
   const [selectedForChat, setSelectedForChat] = useState<Set<string>>(new Set());
 
   function toggleChatSelection(arxivId: string): void {
@@ -367,16 +383,6 @@ export default function App(): JSX.Element {
   }, [toast]);
 
   useEffect(() => {
-    function handleEscape(event: KeyboardEvent): void {
-      if (event.key === 'Escape') {
-        setFullTextModal(null);
-      }
-    }
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
-
-  useEffect(() => {
     function handleGlobalShortcuts(event: KeyboardEvent): void {
       const target = event.target as HTMLElement | null;
       const isTextInput =
@@ -423,9 +429,15 @@ export default function App(): JSX.Element {
       }
     }
 
+    refreshNowRef.current = () => void refresh();
+
     void refresh();
     const timer = window.setInterval(() => {
-      void refresh();
+      // Paused polls are skipped client-side, not just slowed down --
+      // otherwise the backend never stops seeing traffic and can't scale to
+      // zero. See the idle-timer and visibilitychange effects below for how
+      // idlePausedRef gets set and cleared.
+      if (!idlePausedRef.current) void refresh();
     }, POLL_INTERVAL_MS);
 
     return () => {
@@ -434,11 +446,40 @@ export default function App(): JSX.Element {
     };
   }, []);
 
+  useEffect(() => {
+    const hasActivity = (jobsData?.counts.active ?? 0) > 0 || (jobsData?.counts.queued ?? 0) > 0;
+
+    if (hasActivity) {
+      idlePausedRef.current = false;
+      if (idleTimerRef.current !== null) {
+        window.clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (idleTimerRef.current === null) {
+      idleTimerRef.current = window.setTimeout(() => {
+        idlePausedRef.current = true;
+        idleTimerRef.current = null;
+      }, IDLE_PAUSE_MS);
+    }
+  }, [jobsData]);
+
+  useEffect(() => {
+    function handleVisibilityChange(): void {
+      if (document.visibilityState === 'visible') wakePolling();
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   async function onSearch(event: FormEvent): Promise<void> {
     event.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
 
+    wakePolling();
     setSearching(true);
     setSearchError(null);
     setQueueMessage(null);
@@ -458,6 +499,7 @@ export default function App(): JSX.Element {
   async function onEnqueue(): Promise<void> {
     if (!selectedPapers.length) return;
 
+    wakePolling();
     try {
       const result = await enqueuePapers(selectedPapers);
       setQueueMessage(`Queued ${result.queued_count}, skipped ${result.skipped_count} already active/queued.`);
@@ -486,7 +528,13 @@ export default function App(): JSX.Element {
   }
 
   async function loadContentForPaper(arxivId: string): Promise<void> {
-    if (contentByPaperId[arxivId]) return;
+    // Only skip once we actually have summary text: the content endpoint
+    // returns summary_text: null (200, not 404) whenever the summary blob
+    // doesn't exist yet, which is true from right after the download stage
+    // (papers are upserted into the metadata store per-stage, well before
+    // summarize runs) -- caching that null forever would mean a paper's
+    // summary never appears once it's ready, short of a full page reload.
+    if (contentByPaperId[arxivId]?.summary_text) return;
     if (contentLoadingIds.has(arxivId)) return;
 
     setContentLoadingIds((previous) => new Set(previous).add(arxivId));
@@ -506,35 +554,25 @@ export default function App(): JSX.Element {
     }
   }
 
-  function setActiveContentTab(arxivId: string, contentTab: ContentTab): void {
-    setActiveContentTabByPaperId((previous) => ({ ...previous, [arxivId]: contentTab }));
-    if (contentTab !== 'abstract') void loadContentForPaper(arxivId);
-  }
+  // Keyed off id:status pairs, not just ids -- a status change (e.g. a paper
+  // advancing past the summarize stage) needs to re-trigger the fetch below,
+  // since that's when summary_text actually becomes available.
+  const libraryContentKey = library.map((item) => `${item.arxiv_id}:${item.status}`).join(',');
 
-  async function openFullTextModal(item: LibraryItem): Promise<void> {
-    let content = contentByPaperId[item.arxiv_id];
-    if (!content) {
-      try {
-        content = await fetchLibraryContent(item.arxiv_id);
-        setContentByPaperId((previous) => ({ ...previous, [item.arxiv_id]: content as LibraryContent }));
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to load full text.';
-        setLibraryError(message);
-        setToast({ tone: 'error', message });
-        return;
-      }
+  useEffect(() => {
+    // Keyed off a stable string, not the `library` array itself -- the 2.5s
+    // poll (POLL_INTERVAL_MS) replaces `library` with a new array reference
+    // every tick even when its contents haven't changed, which would
+    // otherwise re-run this effect constantly. loadContentForPaper's own
+    // cache/in-flight guards make repeat calls for papers that already have
+    // summary text a no-op regardless, but keying off id:status avoids even
+    // attempting those.
+    if (!libraryContentKey) return;
+    for (const entry of libraryContentKey.split(',')) {
+      const arxivId = entry.slice(0, entry.lastIndexOf(':'));
+      void loadContentForPaper(arxivId);
     }
-
-    if (!content?.extract_text) {
-      setToast({ tone: 'info', message: 'No extracted full text is available for this paper yet.' });
-      return;
-    }
-
-    setFullTextModal({
-      title: item.title,
-      text: content.extract_text
-    });
-  }
+  }, [libraryContentKey]);
 
   async function onToggleListenStatus(item: LibraryItem): Promise<void> {
     const nextStatus = item.listen_status === 'listened' ? 'unlistened' : 'listened';
@@ -838,7 +876,6 @@ export default function App(): JSX.Element {
           ) : (
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
               {filteredLibrary.map((item, index) => {
-                const activeContentTab = activeContentTabByPaperId[item.arxiv_id] || 'abstract';
                 const content = contentByPaperId[item.arxiv_id];
                 const isLoadingContent = contentLoadingIds.has(item.arxiv_id);
                 const isListenUpdating = listenUpdatingIds.has(item.arxiv_id);
@@ -910,51 +947,10 @@ export default function App(): JSX.Element {
                       )}
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        className={`tab-btn ${activeContentTab === 'abstract' ? 'tab-btn-active' : ''}`}
-                        onClick={() => setActiveContentTab(item.arxiv_id, 'abstract')}
-                      >
-                        Abstract
-                      </button>
-                      <button
-                        className={`tab-btn ${activeContentTab === 'summary' ? 'tab-btn-active' : ''}`}
-                        onClick={() => setActiveContentTab(item.arxiv_id, 'summary')}
-                      >
-                        Summary
-                      </button>
-                      <button
-                        className={`tab-btn ${activeContentTab === 'full_text' ? 'tab-btn-active' : ''}`}
-                        onClick={() => {
-                          setActiveContentTab(item.arxiv_id, 'full_text');
-                          void openFullTextModal(item);
-                        }}
-                      >
-                        Full text
-                      </button>
-                    </div>
-
                     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
-                      {activeContentTab === 'abstract' && <p className="whitespace-pre-wrap">{item.abstract}</p>}
-
-                      {activeContentTab === 'summary' && (
-                        <>
-                          {isLoadingContent && <p className="text-slate-500">Loading summary...</p>}
-                          {!isLoadingContent && (
-                            <RichSummaryBlock summaryText={content?.summary_text || ''} />
-                          )}
-                        </>
-                      )}
-
-                      {activeContentTab === 'full_text' && (
-                        <>
-                          {isLoadingContent && <p className="text-slate-500">Loading extracted text...</p>}
-                          {!isLoadingContent && (
-                            <p className="max-h-72 overflow-y-auto whitespace-pre-wrap">
-                              {content?.extract_text || 'No extracted text available.'}
-                            </p>
-                          )}
-                        </>
+                      {isLoadingContent && <p className="text-slate-500">Loading summary...</p>}
+                      {!isLoadingContent && (
+                        <RichSummaryBlock summaryText={content?.summary_text || ''} />
                       )}
                     </div>
                   </article>
@@ -972,21 +968,6 @@ export default function App(): JSX.Element {
       )}
 
       {toast && <Toast tone={toast.tone} message={toast.message} />}
-      {fullTextModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
-          <div className="flex h-[88vh] w-full max-w-6xl flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-              <h3 className="line-clamp-1 pr-4 text-sm font-bold text-ink-950 md:text-base">{fullTextModal.title}</h3>
-              <button className="soft-btn" onClick={() => setFullTextModal(null)}>
-                Close
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{fullTextModal.text}</pre>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

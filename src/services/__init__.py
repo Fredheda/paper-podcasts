@@ -3,7 +3,7 @@
 from .arxiv_service import ArxivService
 from .pdf_service import PdfService
 from .llm_service import LLMService
-from .llm_providers import LLMProvider, AnthropicProvider
+from .llm_providers import LLMProvider, OpenAIProvider
 from .tts_providers import TTSProvider, OpenAITTSProvider
 from .audio_service import AudioService
 
@@ -12,7 +12,7 @@ __all__ = [
     "PdfService",
     "LLMService",
     "LLMProvider",
-    "AnthropicProvider",
+    "OpenAIProvider",
     "TTSProvider",
     "OpenAITTSProvider",
     "AudioService",

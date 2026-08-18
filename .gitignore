@@ -9,7 +9,6 @@ requirements.txt
 
 # Generated artifacts
 *.pdf
-*.json
 *.mp3
 data/*
 summaries/*
@@ -35,7 +34,6 @@ examples/data/*
 examples/papers/*
 
 # Local docs / local overrides
-CLAUDE.md
 src/services/llm_service.py
 
 # Frontend build artifacts

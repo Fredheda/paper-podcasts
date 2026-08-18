@@ -32,13 +32,11 @@ PROMPTS_DIR = REPO_ROOT / "prompts"
 # Background worker concurrency for processing jobs.
 DEFAULT_MAX_CONCURRENT = 5
 
+# Storage backend selection: "local" (default, disk-based, zero Azure setup)
+# or "azure" (Blob Storage + Azure SQL) -- see
+# docs/paper-podcasts/specs/2026-08-15-paper-podcasts-deployment.md.
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")
+
 # Common path validation for arXiv IDs in route parameters.
 ARXIV_ID_PATH = dict(min_length=4, max_length=32, pattern=r"^[a-zA-Z0-9.\-]+$")
-
-
-def parse_allowed_origins() -> list[str]:
-    """Read and normalize CORS origins from `CORS_ORIGINS` env var."""
-    raw = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
-    return origins or ["http://localhost:5173", "http://127.0.0.1:5173"]
 

@@ -58,7 +58,6 @@ export type LibraryItem = {
   arxiv_id: string;
   authors: { name?: string }[];
   status: string;
-  abstract: string;
   listen_status: string;
   last_listened_at: string | null;
   arxiv_url: string | null;
@@ -68,7 +67,6 @@ export type LibraryItem = {
 export type LibraryContent = {
   arxiv_id: string;
   summary_text: string | null;
-  extract_text: string | null;
 };
 
 export type ChatMessage = {

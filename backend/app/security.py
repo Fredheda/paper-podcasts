@@ -1,8 +1,14 @@
-"""HTTP security middleware and CORS setup.
+"""HTTP security middleware.
 
 Why this exists:
 - Security concerns are cross-cutting; centralizing them keeps routes simple.
 - Includes optional controls that can be enabled by environment variables.
+
+No CORS middleware: the browser only ever talks to whichever server is
+serving the frontend (Vite dev server locally via vite.config.ts's
+server.proxy, server.js in prod) -- that server proxies /api and /health to
+the backend itself, server-side. The backend is never hit directly by a
+browser from a different origin, so there's nothing for CORS to allow.
 """
 
 from __future__ import annotations
@@ -13,11 +19,8 @@ import threading
 import time
 from collections.abc import Callable
 
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request
 from fastapi.responses import JSONResponse, Response
-
-from .config import parse_allowed_origins
 
 BACKEND_API_KEY = os.getenv("BACKEND_API_KEY")
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
@@ -26,17 +29,6 @@ TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").lower() in {"1",
 
 _RATE_LIMIT_LOCK = threading.Lock()
 _RATE_LIMIT_BUCKETS: dict[str, list[float]] = {}
-
-
-def add_cors_middleware(app: FastAPI) -> None:
-    """Apply CORS allowlist policy for browser-based frontend requests."""
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=parse_allowed_origins(),
-        allow_credentials=False,
-        allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "x-api-key"],
-    )
 
 
 def _is_rate_limited(client_id: str) -> bool:

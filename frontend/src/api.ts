@@ -8,8 +8,11 @@ import type {
   SearchResponse
 } from './types';
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.toString() || 'http://localhost:8000';
+// Relative paths (same-origin) by default: in dev, vite.config.ts's server.proxy
+// forwards /api and /health to the backend; in prod, server.js does the same.
+// VITE_API_BASE_URL only needs setting if the backend ever lives on a
+// genuinely different origin than whatever's serving this frontend.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
