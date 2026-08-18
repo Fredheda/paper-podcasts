@@ -86,6 +86,50 @@ def test_stream_audio_returns_404_when_artifact_missing(client):
     assert response.status_code == 404
 
 
+def test_stream_audio_without_range_returns_full_body_with_length(client):
+    test_client, metadata_service, blob_service = client
+    metadata_service.get_paper.return_value = _row()
+    blob_service.exists.return_value = True
+    blob_service.download.return_value = b"0123456789"
+
+    response = test_client.get("/api/library/2301.12345/audio")
+
+    assert response.status_code == 200
+    assert response.content == b"0123456789"
+    assert response.headers["accept-ranges"] == "bytes"
+    assert response.headers["content-length"] == "10"
+
+
+def test_stream_audio_honors_range_header(client):
+    test_client, metadata_service, blob_service = client
+    metadata_service.get_paper.return_value = _row()
+    blob_service.exists.return_value = True
+    blob_service.download.return_value = b"0123456789"
+
+    response = test_client.get(
+        "/api/library/2301.12345/audio", headers={"Range": "bytes=2-4"}
+    )
+
+    assert response.status_code == 206
+    assert response.content == b"234"
+    assert response.headers["content-range"] == "bytes 2-4/10"
+    assert response.headers["content-length"] == "3"
+
+
+def test_stream_audio_range_past_end_returns_416(client):
+    test_client, metadata_service, blob_service = client
+    metadata_service.get_paper.return_value = _row()
+    blob_service.exists.return_value = True
+    blob_service.download.return_value = b"0123456789"
+
+    response = test_client.get(
+        "/api/library/2301.12345/audio", headers={"Range": "bytes=999-"}
+    )
+
+    assert response.status_code == 416
+    assert response.headers["content-range"] == "bytes */10"
+
+
 def test_update_listen_status_writes_to_metadata_service(client):
     test_client, metadata_service, _ = client
     metadata_service.get_paper.side_effect = [_row(), _row(listen_status="listened")]

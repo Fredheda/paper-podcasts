@@ -18,8 +18,8 @@ import json
 from datetime import datetime
 from typing import Any, List
 
-from fastapi import APIRouter, HTTPException, Path as ApiPath
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Header, HTTPException, Path as ApiPath
+from fastapi.responses import Response
 
 from src.models.api_schemas import LibraryContentSchema, LibraryItemSchema, ListenStatusUpdateRequest
 
@@ -78,8 +78,21 @@ def get_library_content(
 
 
 @router.get("/{arxiv_id}/audio")
-def stream_library_audio(arxiv_id: str = ApiPath(..., **ARXIV_ID_PATH)) -> StreamingResponse:
-    """Stream generated MP3 for one paper."""
+def stream_library_audio(
+    arxiv_id: str = ApiPath(..., **ARXIV_ID_PATH),
+    range: str | None = Header(default=None),
+) -> Response:
+    """Serve generated MP3 for one paper, honoring HTTP Range requests.
+
+    Mobile Safari's audio pipeline requires byte-range support (206 partial
+    content, Accept-Ranges, a real Content-Length) to manage buffering
+    across network interruptions -- e.g. when the screen locks and the
+    connection is throttled. Without it, any reconnect forces a full
+    re-fetch from byte 0, which surfaces as playback randomly restarting
+    from the beginning, and unreliable end-of-stream detection, which can
+    look like looping. Files here are a few MB at most, so loading fully
+    into memory to slice is simplest and safe.
+    """
     normalized = normalize_arxiv_id(arxiv_id)
     metadata = state.metadata_service.get_paper(normalized)
     if metadata is None:
@@ -90,7 +103,39 @@ def stream_library_audio(arxiv_id: str = ApiPath(..., **ARXIV_ID_PATH)) -> Strea
     if not state.blob_service.exists(audio_path):
         raise HTTPException(status_code=404, detail="Audio not found for this paper")
 
-    return StreamingResponse(state.blob_service.stream(audio_path), media_type="audio/mpeg")
+    data = state.blob_service.download(audio_path)
+    total = len(data)
+
+    if range is None:
+        return Response(
+            content=data,
+            media_type="audio/mpeg",
+            headers={"Accept-Ranges": "bytes", "Content-Length": str(total)},
+        )
+
+    range_value = range.strip().removeprefix("bytes=")
+    start_str, _, end_str = range_value.partition("-")
+    try:
+        start = int(start_str) if start_str else 0
+        end = int(end_str) if end_str else total - 1
+    except ValueError:
+        raise HTTPException(status_code=416, detail="Invalid Range header")
+    end = min(end, total - 1)
+
+    if start < 0 or start > end or start >= total:
+        return Response(status_code=416, headers={"Content-Range": f"bytes */{total}"})
+
+    chunk = data[start : end + 1]
+    return Response(
+        content=chunk,
+        status_code=206,
+        media_type="audio/mpeg",
+        headers={
+            "Accept-Ranges": "bytes",
+            "Content-Range": f"bytes {start}-{end}/{total}",
+            "Content-Length": str(len(chunk)),
+        },
+    )
 
 
 @router.post("/{arxiv_id}/listen", response_model=LibraryItemSchema)
