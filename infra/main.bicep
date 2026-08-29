@@ -192,6 +192,19 @@ resource frontend 'Microsoft.App/containerApps@2025-01-01' = {
         external: true
         targetPort: 3000
         transport: 'auto'
+        // ARM's PUT on this Container App treats the whole `ingress` object
+        // as authoritative, so any redeploy that omits customDomains wipes
+        // the production domain binding (this exact bug took down a sibling
+        // Portfolio project's custom domain). podcasts.frederikheda.com was
+        // originally bound imperatively (outside Bicep); declaring it here
+        // makes every future deploy preserve it instead of resetting it.
+        customDomains: [
+          {
+            name: 'podcasts.frederikheda.com'
+            bindingType: 'SniEnabled'
+            certificateId: '${environment.id}/managedCertificates/mc-cae-podcasts-podcasts-frederi-9882'
+          }
+        ]
       }
       registries: [
         {
