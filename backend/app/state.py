@@ -52,7 +52,9 @@ state = AppState()
 def require_state() -> tuple[ArxivService, ProcessingManager]:
     """Guard helper for routes that need initialized services."""
     if state.arxiv is None or state.processing is None:
-        raise HTTPException(status_code=503, detail="Backend services are not initialized")
+        raise HTTPException(
+            status_code=503, detail="Backend services are not initialized"
+        )
     return state.arxiv, state.processing
 
 
@@ -75,7 +77,9 @@ async def lifespan(_: object):
     blob_service: ArtifactStore
     metadata_service: MetadataStore
     if STORAGE_BACKEND == "azure":
-        blob_service = BlobStorageService(account_name=os.environ["AZURE_STORAGE_ACCOUNT"])
+        blob_service = BlobStorageService(
+            account_name=os.environ["AZURE_STORAGE_ACCOUNT"]
+        )
         metadata_service = AzureSqlMetadataService()
     else:
         blob_service = LocalFileStorageService(root_dir=DATA_DIR / "papers")
@@ -93,16 +97,21 @@ async def lifespan(_: object):
 
     state.arxiv = arxiv_service
     state.pipeline = pipeline
-    state.processing = ProcessingManager(pipeline, max_concurrent=DEFAULT_MAX_CONCURRENT)
+    state.processing = ProcessingManager(
+        pipeline, max_concurrent=DEFAULT_MAX_CONCURRENT
+    )
     state.llm_provider = llm_provider
     state.blob_service = blob_service
     state.metadata_service = metadata_service
 
-    logger.info("Backend initialized with data dir: %s, storage backend: %s", DATA_DIR, STORAGE_BACKEND)
+    logger.info(
+        "Backend initialized with data dir: %s, storage backend: %s",
+        DATA_DIR,
+        STORAGE_BACKEND,
+    )
 
     try:
         yield
     finally:
         if state.processing:
             state.processing.shutdown()
-

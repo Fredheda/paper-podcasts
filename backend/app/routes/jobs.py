@@ -82,4 +82,3 @@ def get_jobs() -> JobsResponse:
             for j in jobs
         ],
     )
-

@@ -103,7 +103,7 @@ class ArxivService:
 
         self._rate_limit()
         papers = []
-        
+
         try:
             for result in self.client.results(search):
                 paper = self._arxiv_result_to_paper(result)
@@ -161,8 +161,7 @@ class ArxivService:
 
             # Download using arxiv library's download_pdf method
             output_path = result.download_pdf(
-                dirpath=str(destination_path),
-                filename=pdf_filename
+                dirpath=str(destination_path), filename=pdf_filename
             )
 
             pdf_path = Path(output_path)

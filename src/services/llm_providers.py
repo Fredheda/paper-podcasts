@@ -12,6 +12,7 @@ class ChatTurn(TypedDict):
     role: str
     content: str
 
+
 logger = logging.getLogger(__name__)
 
 

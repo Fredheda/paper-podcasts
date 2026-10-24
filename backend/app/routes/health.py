@@ -11,4 +11,3 @@ router = APIRouter(tags=["health"])
 def health() -> dict[str, str]:
     """Minimal liveness endpoint used by frontend bootstrap and monitoring."""
     return {"status": "ok"}
-

@@ -34,10 +34,14 @@ def test_generate_returns_message_content():
     with patch("src.services.llm_providers.OpenAI") as mock_openai_cls:
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
-        mock_client.chat.completions.create.return_value = _mock_completion("hello world")
+        mock_client.chat.completions.create.return_value = _mock_completion(
+            "hello world"
+        )
 
         provider = OpenAIProvider(api_key="sk-test", model="gpt-5.6-luna")
-        result = provider.generate(prompt="Summarize this paper.", max_tokens=100, temperature=0.5)
+        result = provider.generate(
+            prompt="Summarize this paper.", max_tokens=100, temperature=0.5
+        )
 
         assert result == "hello world"
         _, kwargs = mock_client.chat.completions.create.call_args
@@ -46,7 +50,9 @@ def test_generate_returns_message_content():
         # temperature is NOT forwarded -- gpt-5.6-luna (and other current
         # reasoning-tier models) reject any value other than the default (1).
         assert "temperature" not in kwargs
-        assert kwargs["messages"] == [{"role": "user", "content": "Summarize this paper."}]
+        assert kwargs["messages"] == [
+            {"role": "user", "content": "Summarize this paper."}
+        ]
 
 
 def test_generate_raises_without_api_key(monkeypatch):
@@ -71,6 +77,9 @@ def test_stream_chat_yields_content_deltas():
 
         assert chunks == ["Hel", "lo"]
         _, kwargs = mock_client.chat.completions.create.call_args
-        assert kwargs["messages"][0] == {"role": "system", "content": "You are helpful."}
+        assert kwargs["messages"][0] == {
+            "role": "system",
+            "content": "You are helpful.",
+        }
         assert kwargs["stream"] is True
         assert "temperature" not in kwargs

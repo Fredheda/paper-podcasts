@@ -79,7 +79,9 @@ class PipelineResult:
             "audio": self.audio.to_dict() if self.audio else None,
             "errors": self.errors,
             "started_at": self.started_at.isoformat(),
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
         }
 
 
@@ -192,7 +194,9 @@ class PaperPipeline:
                 if not result.download:
                     result.download = self._load_download_result(paper)
                 if result.download:
-                    result.extraction = self._stage_extract(paper, result.download, workflow)
+                    result.extraction = self._stage_extract(
+                        paper, result.download, workflow
+                    )
 
             # Summarize stage - lazy load extraction result if needed
             if "summarize" in stages and workflow.can_summarize():
@@ -232,9 +236,7 @@ class PaperPipeline:
 
         return result
 
-    def _stage_download(
-        self, paper: Paper, workflow: PaperWorkflow
-    ) -> DownloadResult:
+    def _stage_download(self, paper: Paper, workflow: PaperWorkflow) -> DownloadResult:
         """
         Execute download stage.
 
@@ -338,7 +340,9 @@ class PaperPipeline:
             )
             self._upload_artifact(result.saved_path)
 
-            logger.info(f"Summarized paper. Length of summary: {len(result.summary_text)} characters")
+            logger.info(
+                f"Summarized paper. Length of summary: {len(result.summary_text)} characters"
+            )
             workflow.complete_summarize()
             self._save_paper_state(paper)
             logger.info(f"[SUMMARIZE] Completed. Saved to {result.saved_path}")

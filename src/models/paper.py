@@ -9,6 +9,7 @@ from typing import List, Optional
 @dataclass
 class Author:
     """Represents a paper author."""
+
     name: str
     affiliation: Optional[str] = None
 
@@ -43,8 +44,8 @@ class Paper:
     def __post_init__(self):
         """Ensure arxiv_id is clean (without version number for storage)."""
         # Remove version number if present (e.g., "2301.12345v2" -> "2301.12345")
-        if 'v' in self.arxiv_id:
-            self.arxiv_id = self.arxiv_id.split('v')[0]
+        if "v" in self.arxiv_id:
+            self.arxiv_id = self.arxiv_id.split("v")[0]
 
     @staticmethod
     def clean_filename(title: str, max_length: int = 200) -> str:
@@ -64,11 +65,11 @@ class Paper:
         invalid_chars = '/\\:*?"<>|'
         cleaned = title
         for char in invalid_chars:
-            cleaned = cleaned.replace(char, '_')
+            cleaned = cleaned.replace(char, "_")
 
         # Replace multiple spaces with single space, then spaces with underscores
-        cleaned = ' '.join(cleaned.split())
-        cleaned = cleaned.replace(' ', '_')
+        cleaned = " ".join(cleaned.split())
+        cleaned = cleaned.replace(" ", "_")
 
         # Limit length to avoid filesystem issues
         cleaned = cleaned[:max_length]
@@ -101,4 +102,3 @@ class Paper:
         if self.save_dir and self.pdf_filename:
             return str(Path(self.save_dir) / self.pdf_filename)
         return None
-

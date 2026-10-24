@@ -21,7 +21,10 @@ def services():
 
 def test_load_extract_returns_title_and_text(services):
     metadata_service, blob_service = services
-    metadata_service.get_paper.return_value = {"title": "Test Paper", "cleaned_title": "Test_Paper"}
+    metadata_service.get_paper.return_value = {
+        "title": "Test Paper",
+        "cleaned_title": "Test_Paper",
+    }
     blob_service.exists.return_value = True
     blob_service.download.return_value = b"extracted markdown"
 
@@ -44,7 +47,10 @@ def test_load_extract_404s_when_metadata_missing(services):
 
 def test_load_extract_404s_when_extract_artifact_missing(services):
     metadata_service, blob_service = services
-    metadata_service.get_paper.return_value = {"title": "Test Paper", "cleaned_title": "Test_Paper"}
+    metadata_service.get_paper.return_value = {
+        "title": "Test Paper",
+        "cleaned_title": "Test_Paper",
+    }
     blob_service.exists.return_value = False
 
     with pytest.raises(HTTPException) as exc_info:

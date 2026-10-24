@@ -39,4 +39,3 @@ STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")
 
 # Common path validation for arXiv IDs in route parameters.
 ARXIV_ID_PATH = dict(min_length=4, max_length=32, pattern=r"^[a-zA-Z0-9.\-]+$")
-

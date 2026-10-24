@@ -11,5 +11,5 @@ audio_filename = "state_machine_visualisation.png"
 audio_path = asset_dir / audio_filename
 
 machine = PaperWorkflow()
-dot = DotGraphMachine(machine)() 
+dot = DotGraphMachine(machine)()
 dot.write_png(str(audio_path))

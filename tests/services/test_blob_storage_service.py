@@ -6,14 +6,18 @@ from src.services.blob_storage_service import BlobStorageService
 
 
 def _make_service():
-    with patch("src.services.blob_storage_service.DefaultAzureCredential"), \
-         patch("src.services.blob_storage_service.BlobServiceClient") as mock_client_cls:
+    with (
+        patch("src.services.blob_storage_service.DefaultAzureCredential"),
+        patch("src.services.blob_storage_service.BlobServiceClient") as mock_client_cls,
+    ):
         mock_client = MagicMock()
         mock_container = MagicMock()
         mock_client.get_container_client.return_value = mock_container
         mock_client_cls.return_value = mock_client
 
-        service = BlobStorageService(account_name="teststorage", container_name="paper-podcasts")
+        service = BlobStorageService(
+            account_name="teststorage", container_name="paper-podcasts"
+        )
         return service, mock_client_cls, mock_container
 
 
@@ -30,7 +34,9 @@ def test_upload_calls_upload_blob_with_overwrite():
 
     service.upload("foo/bar.txt", b"hello")
 
-    mock_container.upload_blob.assert_called_once_with(name="foo/bar.txt", data=b"hello", overwrite=True)
+    mock_container.upload_blob.assert_called_once_with(
+        name="foo/bar.txt", data=b"hello", overwrite=True
+    )
 
 
 def test_upload_file_reads_local_file_and_uploads_bytes(tmp_path):

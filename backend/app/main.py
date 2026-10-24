@@ -46,4 +46,3 @@ def create_app() -> FastAPI:
 
 # Uvicorn target: `backend.app.main:app`
 app = create_app()
-

@@ -50,13 +50,9 @@ class PdfService:
             # Convert PDF to markdown
             result = self.converter.convert(str(pdf_path))
 
-            content = ExtractedContent(
-                markdown=result.text_content
-            )
+            content = ExtractedContent(markdown=result.text_content)
 
-            logger.info(
-                f"Successfully extracted {len(content.markdown)} characters"
-            )
+            logger.info(f"Successfully extracted {len(content.markdown)} characters")
 
             return content
 

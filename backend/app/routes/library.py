@@ -46,7 +46,9 @@ def _row_to_library_item(row: dict[str, Any]) -> dict[str, Any]:
         "authors": json.loads(row["authors"]),
         "status": row["status"],
         "listen_status": row["listen_status"],
-        "last_listened_at": row["last_listened_at"].isoformat() if row["last_listened_at"] else None,
+        "last_listened_at": row["last_listened_at"].isoformat()
+        if row["last_listened_at"]
+        else None,
         "arxiv_url": f"https://arxiv.org/abs/{arxiv_id}",
         "audio_url": f"/api/library/{arxiv_id}/audio" if has_audio else None,
     }
@@ -155,7 +157,9 @@ def update_listen_status(
         raise HTTPException(status_code=404, detail="Paper not found")
 
     last_listened_at = datetime.now() if payload.listen_status == "listened" else None
-    state.metadata_service.update_listen_status(normalized, payload.listen_status, last_listened_at)
+    state.metadata_service.update_listen_status(
+        normalized, payload.listen_status, last_listened_at
+    )
 
     updated = state.metadata_service.get_paper(normalized)
     return LibraryItemSchema(**_row_to_library_item(updated))

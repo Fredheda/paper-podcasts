@@ -61,6 +61,7 @@ class OpenAITTSProvider(TTSProvider):
 
         try:
             from openai import OpenAI
+
             self.client = OpenAI(api_key=self.api_key)
         except ImportError:
             raise ImportError(
@@ -103,7 +104,7 @@ class OpenAITTSProvider(TTSProvider):
                 model=self.model,
                 voice=voice,
                 input=text,
-                instructions="The text includes markdown and/or html formatting tags which should be treated as such."
+                instructions="The text includes markdown and/or html formatting tags which should be treated as such.",
             ) as response:
                 response.stream_to_file(str(output_file))
 

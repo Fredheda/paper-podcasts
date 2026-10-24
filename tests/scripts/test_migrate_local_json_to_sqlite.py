@@ -60,8 +60,12 @@ def test_migrate_returns_zero_when_no_papers_dir(tmp_path):
 
 def test_migrate_handles_multiple_papers(tmp_path):
     papers_dir = tmp_path / "papers"
-    _write_paper_state(papers_dir, "Paper_One", arxiv_id="1111.11111", title="Paper One")
-    _write_paper_state(papers_dir, "Paper_Two", arxiv_id="2222.22222", title="Paper Two")
+    _write_paper_state(
+        papers_dir, "Paper_One", arxiv_id="1111.11111", title="Paper One"
+    )
+    _write_paper_state(
+        papers_dir, "Paper_Two", arxiv_id="2222.22222", title="Paper Two"
+    )
 
     count = migrate(data_dir=tmp_path, db_path=tmp_path / "podcasts.db")
 
