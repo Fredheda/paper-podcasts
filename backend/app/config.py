@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -38,4 +39,6 @@ DEFAULT_MAX_CONCURRENT = 5
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")
 
 # Common path validation for arXiv IDs in route parameters.
-ARXIV_ID_PATH = dict(min_length=4, max_length=32, pattern=r"^[a-zA-Z0-9.\-]+$")
+ARXIV_ID_PATH: dict[str, Any] = dict(
+    min_length=4, max_length=32, pattern=r"^[a-zA-Z0-9.\-]+$"
+)

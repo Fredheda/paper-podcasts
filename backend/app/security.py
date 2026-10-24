@@ -17,7 +17,7 @@ import hmac
 import os
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from fastapi import Request
 from fastapi.responses import JSONResponse, Response
@@ -56,7 +56,7 @@ def _is_rate_limited(client_id: str) -> bool:
 
 
 async def security_middleware(
-    request: Request, call_next: Callable[..., Response]
+    request: Request, call_next: Callable[..., Awaitable[Response]]
 ) -> Response:
     """Global request checks + response hardening headers.
 

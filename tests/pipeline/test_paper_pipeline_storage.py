@@ -48,7 +48,7 @@ def test_download_stage_uploads_artifact_and_saves_metadata(tmp_path):
     pipe = _make_pipeline(
         tmp_path, blob_service=blob_service, metadata_service=metadata_service
     )
-    pipe.arxiv.download_paper.return_value = DownloadResult(
+    pipe.arxiv.download_paper.return_value = DownloadResult(  # pyright: ignore[reportAttributeAccessIssue] -- arxiv is a MagicMock here
         pdf_path=pdf_path,
         save_dir=pdf_path.parent,
         pdf_filename=pdf_path.name,

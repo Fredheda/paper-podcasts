@@ -61,7 +61,7 @@ class ArxivService:
             updated=result.updated,
             categories=result.categories,
             primary_category=result.primary_category,
-            pdf_url=result.pdf_url,
+            pdf_url=result.pdf_url or "",
             comment=result.comment,
             journal_ref=result.journal_ref,
             doi=result.doi,

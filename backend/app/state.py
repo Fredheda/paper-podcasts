@@ -58,6 +58,15 @@ def require_state() -> tuple[ArxivService, ProcessingManager]:
     return state.arxiv, state.processing
 
 
+def require_storage() -> tuple[MetadataStore, ArtifactStore]:
+    """Guard helper for routes that read the metadata and artifact stores."""
+    if state.metadata_service is None or state.blob_service is None:
+        raise HTTPException(
+            status_code=503, detail="Backend services are not initialized"
+        )
+    return state.metadata_service, state.blob_service
+
+
 @asynccontextmanager
 async def lifespan(_: object):
     """Build all shared services once on startup and tear down on shutdown."""

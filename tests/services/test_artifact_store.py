@@ -8,4 +8,4 @@ from src.services.artifact_store import ArtifactStore
 
 def test_cannot_instantiate_abstract_class_directly():
     with pytest.raises(TypeError):
-        ArtifactStore()
+        ArtifactStore()  # pyright: ignore[reportAbstractUsage] -- the test's point

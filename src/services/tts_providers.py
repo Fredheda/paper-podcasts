@@ -16,7 +16,7 @@ class TTSProvider(ABC):
     def generate_audio(
         self,
         text: str,
-        voice: str,
+        voice: Optional[str],
         output_path: str | Path,
     ) -> str:
         """
@@ -24,7 +24,7 @@ class TTSProvider(ABC):
 
         Args:
             text: Text to convert to speech
-            voice: Voice to use
+            voice: Voice to use (the provider's default if None)
             output_path: Where to save audio file
 
         Returns:

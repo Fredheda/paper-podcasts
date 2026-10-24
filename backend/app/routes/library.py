@@ -18,7 +18,7 @@ import json
 from datetime import datetime
 from typing import Any, List
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Body, Header, HTTPException
 from fastapi import Path as ApiPath
 from fastapi.responses import Response
 
@@ -30,7 +30,7 @@ from src.models.api_schemas import (
 
 from ..arxiv_ids import normalize_arxiv_id
 from ..config import ARXIV_ID_PATH
-from ..state import state
+from ..state import require_storage
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 
@@ -57,7 +57,8 @@ def _row_to_library_item(row: dict[str, Any]) -> dict[str, Any]:
 @router.get("", response_model=List[LibraryItemSchema])
 def get_library() -> List[LibraryItemSchema]:
     """Return all persisted paper entries for the library list."""
-    rows = state.metadata_service.list_papers()
+    metadata_service, _ = require_storage()
+    rows = metadata_service.list_papers()
     return [LibraryItemSchema(**_row_to_library_item(row)) for row in rows]
 
 
@@ -68,7 +69,8 @@ def get_library_content(
     """Return summary text for a single paper. Full text is read on arXiv,
     not served here -- see item.arxiv_url on the library list."""
     normalized = normalize_arxiv_id(arxiv_id)
-    metadata = state.metadata_service.get_paper(normalized)
+    metadata_service, blob_service = require_storage()
+    metadata = metadata_service.get_paper(normalized)
     if metadata is None:
         raise HTTPException(status_code=404, detail="Paper not found")
 
@@ -76,8 +78,8 @@ def get_library_content(
     summary_path = f"{cleaned_title}/summaries/summary_{cleaned_title}.txt"
 
     summary_text = (
-        state.blob_service.download(summary_path).decode("utf-8")
-        if state.blob_service.exists(summary_path)
+        blob_service.download(summary_path).decode("utf-8")
+        if blob_service.exists(summary_path)
         else None
     )
 
@@ -101,16 +103,17 @@ def stream_library_audio(
     into memory to slice is simplest and safe.
     """
     normalized = normalize_arxiv_id(arxiv_id)
-    metadata = state.metadata_service.get_paper(normalized)
+    metadata_service, blob_service = require_storage()
+    metadata = metadata_service.get_paper(normalized)
     if metadata is None:
         raise HTTPException(status_code=404, detail="Paper not found")
 
     cleaned_title = metadata["cleaned_title"]
     audio_path = f"{cleaned_title}/audio/{cleaned_title}.mp3"
-    if not state.blob_service.exists(audio_path):
+    if not blob_service.exists(audio_path):
         raise HTTPException(status_code=404, detail="Audio not found for this paper")
 
-    data = state.blob_service.download(audio_path)
+    data = blob_service.download(audio_path)
     total = len(data)
 
     if range is None:
@@ -148,18 +151,21 @@ def stream_library_audio(
 @router.post("/{arxiv_id}/listen", response_model=LibraryItemSchema)
 def update_listen_status(
     arxiv_id: str = ApiPath(..., **ARXIV_ID_PATH),
-    payload: ListenStatusUpdateRequest = ...,
+    payload: ListenStatusUpdateRequest = Body(...),
 ) -> LibraryItemSchema:
     """Persist listened/unlistened state and return the updated library row."""
     normalized = normalize_arxiv_id(arxiv_id)
-    metadata = state.metadata_service.get_paper(normalized)
+    metadata_service, _ = require_storage()
+    metadata = metadata_service.get_paper(normalized)
     if metadata is None:
         raise HTTPException(status_code=404, detail="Paper not found")
 
     last_listened_at = datetime.now() if payload.listen_status == "listened" else None
-    state.metadata_service.update_listen_status(
+    metadata_service.update_listen_status(
         normalized, payload.listen_status, last_listened_at
     )
 
-    updated = state.metadata_service.get_paper(normalized)
+    updated = metadata_service.get_paper(normalized)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Paper not found")
     return LibraryItemSchema(**_row_to_library_item(updated))

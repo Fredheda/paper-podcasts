@@ -26,7 +26,8 @@ def test_init_builds_account_url_and_container_client():
 
     _, kwargs = mock_client_cls.call_args
     assert kwargs["account_url"] == "https://teststorage.blob.core.windows.net"
-    service._client.get_container_client.assert_called_once_with("paper-podcasts")
+    mock_client = service._client
+    mock_client.get_container_client.assert_called_once_with("paper-podcasts")  # pyright: ignore[reportAttributeAccessIssue] -- _client is a MagicMock here
 
 
 def test_upload_calls_upload_blob_with_overwrite():

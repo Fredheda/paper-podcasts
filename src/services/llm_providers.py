@@ -3,7 +3,7 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Iterator, List, Optional, TypedDict
+from typing import Any, Iterator, List, Optional, TypedDict
 
 from openai import OpenAI
 
@@ -129,7 +129,7 @@ class OpenAIProvider(LLMProvider):
     ) -> Iterator[str]:
         logger.info(f"Streaming chat with {self.model} ({len(messages)} messages)")
 
-        chat_messages: List[dict] = []
+        chat_messages: List[Any] = []
         if system:
             chat_messages.append({"role": "system", "content": system})
         chat_messages.extend(messages)

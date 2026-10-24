@@ -5,13 +5,14 @@ both sides, since routes/library.py calls .isoformat() on them
 unconditionally."""
 
 from datetime import datetime
+from typing import Any
 
 from src.models.paper import Author, Paper
 from src.services.sqlite_metadata_service import SqliteMetadataService
 
 
 def _make_paper(**overrides) -> Paper:
-    defaults = dict(
+    defaults: dict[str, Any] = dict(
         arxiv_id="2301.12345",
         title="Test Paper",
         authors=[Author(name="Ada Lovelace")],
@@ -33,6 +34,7 @@ def test_upsert_then_get_paper_roundtrips(tmp_path):
     service.upsert_paper(_make_paper())
     row = service.get_paper("2301.12345")
 
+    assert row is not None
     assert row["arxiv_id"] == "2301.12345"
     assert row["title"] == "Test Paper"
 
@@ -72,6 +74,7 @@ def test_update_listen_status_persists_change(tmp_path):
     service.update_listen_status("2301.12345", "listened", when)
     row = service.get_paper("2301.12345")
 
+    assert row is not None
     assert row["listen_status"] == "listened"
     assert row["last_listened_at"] == when
 
@@ -83,6 +86,7 @@ def test_datetime_columns_round_trip_as_datetime_objects(tmp_path):
     row = service.get_paper("2301.12345")
     rows = service.list_papers()
 
+    assert row is not None
     for column in ("published", "created_at", "updated_at"):
         assert isinstance(row[column], datetime)
         assert isinstance(rows[0][column], datetime)

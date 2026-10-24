@@ -10,10 +10,11 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from src.models.api_schemas import ChatStreamRequest
+from src.services.llm_providers import ChatTurn
 
 from ..arxiv_ids import normalize_arxiv_id
 from ..config import PROMPTS_DIR
-from ..state import state
+from ..state import require_storage, state
 
 logger = logging.getLogger(__name__)
 
@@ -23,16 +24,17 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 def _load_extract(arxiv_id: str) -> tuple[str, str]:
     """Return (title, extracted markdown) for a paper; raises 404 if missing."""
     normalized = normalize_arxiv_id(arxiv_id)
-    metadata = state.metadata_service.get_paper(normalized)
+    metadata_service, blob_service = require_storage()
+    metadata = metadata_service.get_paper(normalized)
     if metadata is None:
         raise HTTPException(status_code=404, detail=f"No extracted text for {arxiv_id}")
 
     cleaned_title = metadata["cleaned_title"]
     extract_path = f"{cleaned_title}/extracted/{cleaned_title}.md"
-    if not state.blob_service.exists(extract_path):
+    if not blob_service.exists(extract_path):
         raise HTTPException(status_code=404, detail=f"No extracted text for {arxiv_id}")
 
-    text = state.blob_service.download(extract_path).decode("utf-8")
+    text = blob_service.download(extract_path).decode("utf-8")
     return str(metadata["title"]), text
 
 
@@ -57,7 +59,9 @@ def stream_chat(payload: ChatStreamRequest) -> StreamingResponse:
         raise HTTPException(status_code=503, detail="LLM provider not initialized")
 
     system_prompt = _build_system_prompt(payload.arxiv_ids)
-    messages = [{"role": m.role, "content": m.content} for m in payload.messages]
+    messages: list[ChatTurn] = [
+        {"role": m.role, "content": m.content} for m in payload.messages
+    ]
     provider = state.llm_provider
 
     def event_stream() -> Iterator[str]:
