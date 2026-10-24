@@ -29,7 +29,7 @@ describe('ChatPanel', () => {
   it('asks the user to select papers first and disables input', () => {
     renderPanel([]);
     expect(
-      screen.getByText('Select up to 5 completed papers from the library to start chatting.')
+      screen.getByText('Select up to 5 completed papers (broken on purpose).')
     ).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Select papers first')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
