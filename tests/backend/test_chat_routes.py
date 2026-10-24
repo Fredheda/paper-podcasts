@@ -4,10 +4,10 @@ ArtifactStore/MetadataStore mocks."""
 from unittest.mock import MagicMock
 
 import pytest
+from fastapi import HTTPException
 
 from backend.app.routes.chat import _load_extract
 from backend.app.state import state as app_state
-from fastapi import HTTPException
 
 
 @pytest.fixture

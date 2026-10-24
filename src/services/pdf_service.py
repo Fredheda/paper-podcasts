@@ -1,13 +1,14 @@
 """Service for extracting content from PDF files using MarkItDown."""
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
 from markitdown import MarkItDown
-from datetime import datetime
+
 from ..models.extracted_content import ExtractedContent
 from ..models.extraction_result import ExtractionResult
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,15 +1,15 @@
 """Service for interacting with the arXiv API."""
 
-import json
-import time
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List
-import arxiv
-from ..models.paper import Paper, Author
-from ..models.download_result import DownloadResult
 
+import arxiv
+
+from ..models.download_result import DownloadResult
+from ..models.paper import Author, Paper
 
 logger = logging.getLogger(__name__)
 

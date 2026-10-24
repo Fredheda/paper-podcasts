@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .tts_providers import TTSProvider
 from ..models.audio_result import AudioResult
+from .tts_providers import TTSProvider
 
 logger = logging.getLogger(__name__)
 

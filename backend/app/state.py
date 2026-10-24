@@ -14,10 +14,9 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from .config import DATA_DIR, DEFAULT_MAX_CONCURRENT, PROMPTS_DIR, STORAGE_BACKEND
 from src.pipeline.paper_pipeline import PaperPipeline
-from src.services.arxiv_service import ArxivService
 from src.services.artifact_store import ArtifactStore
+from src.services.arxiv_service import ArxivService
 from src.services.audio_service import AudioService
 from src.services.azure_sql_metadata_service import AzureSqlMetadataService
 from src.services.blob_storage_service import BlobStorageService
@@ -29,6 +28,8 @@ from src.services.pdf_service import PdfService
 from src.services.processing_manager import ProcessingManager
 from src.services.sqlite_metadata_service import SqliteMetadataService
 from src.services.tts_providers import OpenAITTSProvider
+
+from .config import DATA_DIR, DEFAULT_MAX_CONCURRENT, PROMPTS_DIR, STORAGE_BACKEND
 
 logger = logging.getLogger(__name__)
 

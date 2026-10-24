@@ -1,6 +1,8 @@
-from .paper_workflow import PaperWorkflow
-from statemachine.contrib.diagram import DotGraphMachine
 from pathlib import Path
+
+from statemachine.contrib.diagram import DotGraphMachine
+
+from .paper_workflow import PaperWorkflow
 
 asset_dir = Path("assets")
 asset_dir.mkdir(exist_ok=True)

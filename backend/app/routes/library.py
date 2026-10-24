@@ -18,10 +18,15 @@ import json
 from datetime import datetime
 from typing import Any, List
 
-from fastapi import APIRouter, Header, HTTPException, Path as ApiPath
+from fastapi import APIRouter, Header, HTTPException
+from fastapi import Path as ApiPath
 from fastapi.responses import Response
 
-from src.models.api_schemas import LibraryContentSchema, LibraryItemSchema, ListenStatusUpdateRequest
+from src.models.api_schemas import (
+    LibraryContentSchema,
+    LibraryItemSchema,
+    ListenStatusUpdateRequest,
+)
 
 from ..arxiv_ids import normalize_arxiv_id
 from ..config import ARXIV_ID_PATH

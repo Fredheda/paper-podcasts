@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 
-from statemachine import StateMachine, State
+from statemachine import State, StateMachine
 
 logger = logging.getLogger(__name__)
 

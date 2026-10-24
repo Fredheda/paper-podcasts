@@ -5,4 +5,6 @@ submodule tries to import shared modules from `src.*`.
 """
 
 # Ensures REPO_ROOT is added to sys.path as early as possible.
-from . import config as _config
+from . import config
+
+__all__ = ["config"]

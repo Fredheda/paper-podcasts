@@ -2,11 +2,12 @@
 
 import json
 import sqlite3
+from pathlib import Path
 
 from scripts.migrate_local_json_to_sqlite import migrate
 
 
-def _write_paper_state(papers_dir, cleaned_title: str, **overrides) -> "Path":
+def _write_paper_state(papers_dir, cleaned_title: str, **overrides) -> Path:
     paper_dir = papers_dir / cleaned_title
     paper_dir.mkdir(parents=True)
     data = {

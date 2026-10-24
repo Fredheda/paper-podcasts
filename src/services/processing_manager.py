@@ -184,7 +184,7 @@ class ProcessingManager:
                     queue_position=None,
                     error=None,
                 )
-            except Exception as exc:
+            except Exception:
                 logger.exception("Background processing failed for %s", paper_id)
                 self._set_stage(
                     paper_id,
