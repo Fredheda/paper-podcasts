@@ -36,7 +36,7 @@ def test_upsert_then_get_paper_roundtrips(tmp_path):
 
     assert row is not None
     assert row["arxiv_id"] == "2301.12345"
-    assert row["title"] == "Test Paper (broken on purpose)"
+    assert row["title"] == "Test Paper"
 
 
 def test_get_paper_returns_none_when_not_found(tmp_path):
