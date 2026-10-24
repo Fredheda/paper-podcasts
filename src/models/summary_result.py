@@ -3,12 +3,12 @@
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
 class SummaryResult:
     """Result of summarizing a paper."""
+
     summary_text: str
     saved_path: Path
     summarized_at: datetime

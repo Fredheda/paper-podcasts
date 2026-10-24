@@ -117,7 +117,9 @@ def test_update_listen_status_executes_update(env):
         mock_mssql.connect.return_value = mock_conn
         service = AzureSqlMetadataService()
 
-        service.update_listen_status("2301.12345", "listened", datetime(2026, 8, 15, 10, 0, 0))
+        service.update_listen_status(
+            "2301.12345", "listened", datetime(2026, 8, 15, 10, 0, 0)
+        )
 
         mock_conn.cursor.return_value.execute.assert_called_once()
         mock_conn.commit.assert_called_once()
@@ -130,9 +132,13 @@ def test_connect_retries_on_operational_error_then_succeeds(env, monkeypatch):
         "src.services.azure_sql_metadata_service._CONNECT_RETRY_DELAY_SECONDS", 0
     )
     mock_conn = MagicMock()
-    with patch("src.services.azure_sql_metadata_service.mssql_python.connect") as mock_connect:
+    with patch(
+        "src.services.azure_sql_metadata_service.mssql_python.connect"
+    ) as mock_connect:
         mock_connect.side_effect = [
-            mssql_python.OperationalError("Driver Error", "database not currently available"),
+            mssql_python.OperationalError(
+                "Driver Error", "database not currently available"
+            ),
             mock_conn,
         ]
         service = AzureSqlMetadataService()
@@ -149,7 +155,9 @@ def test_connect_raises_after_max_attempts(env, monkeypatch):
     monkeypatch.setattr(
         "src.services.azure_sql_metadata_service._CONNECT_RETRY_DELAY_SECONDS", 0
     )
-    with patch("src.services.azure_sql_metadata_service.mssql_python.connect") as mock_connect:
+    with patch(
+        "src.services.azure_sql_metadata_service.mssql_python.connect"
+    ) as mock_connect:
         mock_connect.side_effect = mssql_python.OperationalError(
             "Driver Error", "TCP Provider: Timeout error"
         )

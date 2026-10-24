@@ -1,9 +1,9 @@
 """State machine for paper processing workflow."""
 
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from statemachine import StateMachine, State
+from statemachine import State, StateMachine
 
 logger = logging.getLogger(__name__)
 
@@ -35,33 +35,48 @@ class PaperWorkflow(StateMachine):
     completed = State(final=True, value="completed")
     failed = State(final=True, value="failed")
 
-    # Define transitions with explicit names
-    start_download = new.to(downloading)
-    complete_download = downloading.to(downloaded)
+    if TYPE_CHECKING:
+        # Type checkers read a transition as a decorator that wants a
+        # callback, but at runtime it is a plain method on the machine.
+        # These stubs give them the real call signatures.
+        def start_download(self) -> None: ...
+        def complete_download(self) -> None: ...
+        def start_extract(self) -> None: ...
+        def complete_extract(self) -> None: ...
+        def start_summarize(self) -> None: ...
+        def complete_summarize(self) -> None: ...
+        def start_audio_generation(self) -> None: ...
+        def complete_audio_generation(self) -> None: ...
+        def finalize(self) -> None: ...
+        def mark_failed(self, error: Optional[str] = None) -> None: ...
+    else:
+        # Define transitions with explicit names
+        start_download = new.to(downloading)
+        complete_download = downloading.to(downloaded)
 
-    start_extract = downloaded.to(extracting)
-    complete_extract = extracting.to(extracted)
+        start_extract = downloaded.to(extracting)
+        complete_extract = extracting.to(extracted)
 
-    start_summarize = extracted.to(summarizing)
-    complete_summarize = summarizing.to(summarized)
+        start_summarize = extracted.to(summarizing)
+        complete_summarize = summarizing.to(summarized)
 
-    start_audio_generation = summarized.to(generating_audio)
-    complete_audio_generation = generating_audio.to(audio_generated)
+        start_audio_generation = summarized.to(generating_audio)
+        complete_audio_generation = generating_audio.to(audio_generated)
 
-    finalize = audio_generated.to(completed)
+        finalize = audio_generated.to(completed)
 
-    # Failure transitions from any non-terminal state
-    mark_failed = (
-        new.to(failed)
-        | downloading.to(failed)
-        | downloaded.to(failed)
-        | extracting.to(failed)
-        | extracted.to(failed)
-        | summarizing.to(failed)
-        | summarized.to(failed)
-        | generating_audio.to(failed)
-        | audio_generated.to(failed)
-    )
+        # Failure transitions from any non-terminal state
+        mark_failed = (
+            new.to(failed)
+            | downloading.to(failed)
+            | downloaded.to(failed)
+            | extracting.to(failed)
+            | extracted.to(failed)
+            | summarizing.to(failed)
+            | summarized.to(failed)
+            | generating_audio.to(failed)
+            | audio_generated.to(failed)
+        )
 
     def __init__(self, model=None, state_field="status", start_value=None):
         """

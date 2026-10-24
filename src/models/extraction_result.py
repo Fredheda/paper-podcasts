@@ -3,12 +3,14 @@
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
 from .extracted_content import ExtractedContent
 
 
 @dataclass
 class ExtractionResult:
     """Result of extracting content from a PDF."""
+
     content: ExtractedContent
     saved_path: Path
     extracted_at: datetime

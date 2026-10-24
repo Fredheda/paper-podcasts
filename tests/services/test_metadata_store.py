@@ -8,4 +8,4 @@ from src.services.metadata_store import MetadataStore
 
 def test_cannot_instantiate_abstract_class_directly():
     with pytest.raises(TypeError):
-        MetadataStore()
+        MetadataStore()  # pyright: ignore[reportAbstractUsage] -- the test's point

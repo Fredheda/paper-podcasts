@@ -8,6 +8,7 @@ from pathlib import Path
 @dataclass
 class DownloadResult:
     """Result of downloading a paper PDF."""
+
     pdf_path: Path
     save_dir: Path
     pdf_filename: str

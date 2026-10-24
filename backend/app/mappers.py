@@ -17,7 +17,9 @@ def to_domain_paper(paper: PaperSchema) -> DomainPaper:
     return DomainPaper(
         arxiv_id=paper.arxiv_id,
         title=paper.title,
-        authors=[DomainAuthor(name=a.name, affiliation=a.affiliation) for a in paper.authors],
+        authors=[
+            DomainAuthor(name=a.name, affiliation=a.affiliation) for a in paper.authors
+        ],
         abstract=paper.abstract,
         published=paper.published,
         updated=paper.updated,
@@ -35,7 +37,9 @@ def to_paper_schema(paper: DomainPaper) -> PaperSchema:
     return PaperSchema(
         arxiv_id=paper.arxiv_id,
         title=paper.title,
-        authors=[AuthorSchema(name=a.name, affiliation=a.affiliation) for a in paper.authors],
+        authors=[
+            AuthorSchema(name=a.name, affiliation=a.affiliation) for a in paper.authors
+        ],
         abstract=paper.abstract,
         published=paper.published,
         updated=paper.updated,
@@ -46,4 +50,3 @@ def to_paper_schema(paper: DomainPaper) -> PaperSchema:
         journal_ref=paper.journal_ref,
         doi=paper.doi,
     )
-

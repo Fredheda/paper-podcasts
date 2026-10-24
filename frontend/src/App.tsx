@@ -572,6 +572,9 @@ export default function App(): JSX.Element {
       const arxivId = entry.slice(0, entry.lastIndexOf(':'));
       void loadContentForPaper(arxivId);
     }
+    // loadContentForPaper is recreated every render; depending on it would
+    // re-run this effect on each poll tick, which the stable key avoids.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [libraryContentKey]);
 
   async function onToggleListenStatus(item: LibraryItem): Promise<void> {

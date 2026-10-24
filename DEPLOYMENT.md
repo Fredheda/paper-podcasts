@@ -36,6 +36,8 @@ poetry run pytest -v      # offline, local storage backend
 poetry run honcho start   # backend + frontend together, via the repo-root Procfile
 ```
 
+These checks, plus lint, type check, and the frontend tests, also run in GitHub Actions on every pull request.
+
 Open http://localhost:5173 (note: `localhost`, not `127.0.0.1` — Vite's dev
 config binds to the hostname specifically). `STORAGE_BACKEND` defaults to
 `local` — no Azure credentials needed for any of the above. See

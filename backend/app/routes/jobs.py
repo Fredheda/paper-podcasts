@@ -14,8 +14,8 @@ from src.models.api_schemas import (
     EnqueueRequest,
     EnqueueResponse,
     JobCountsSchema,
-    JobsResponse,
     JobSchema,
+    JobsResponse,
     SearchRequest,
     SearchResponse,
 )
@@ -82,4 +82,3 @@ def get_jobs() -> JobsResponse:
             for j in jobs
         ],
     )
-

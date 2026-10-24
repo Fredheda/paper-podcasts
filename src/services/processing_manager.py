@@ -166,9 +166,15 @@ class ProcessingManager:
 
             try:
                 paper = self._papers[paper_id]
-                self._run_stage(paper_id, paper, "download", "downloading", "Downloading PDF")
-                self._run_stage(paper_id, paper, "extract", "extracting", "Extracting text")
-                self._run_stage(paper_id, paper, "summarize", "summarizing", "Generating summary")
+                self._run_stage(
+                    paper_id, paper, "download", "downloading", "Downloading PDF"
+                )
+                self._run_stage(
+                    paper_id, paper, "extract", "extracting", "Extracting text"
+                )
+                self._run_stage(
+                    paper_id, paper, "summarize", "summarizing", "Generating summary"
+                )
                 self._run_stage(
                     paper_id,
                     paper,
@@ -184,7 +190,7 @@ class ProcessingManager:
                     queue_position=None,
                     error=None,
                 )
-            except Exception as exc:
+            except Exception:
                 logger.exception("Background processing failed for %s", paper_id)
                 self._set_stage(
                     paper_id,

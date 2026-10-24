@@ -55,6 +55,17 @@ needed) — the same code path production runs, just backed by
 `docs/paper-podcasts/specs/2026-08-15-paper-podcasts-deployment.md`
 (workspace root) for the full design.
 
+## Checks
+
+```bash
+poetry run pytest -v
+poetry run ruff check . && poetry run ruff format --check .
+poetry run pyright
+cd frontend && npm test && npm run lint && npm run build
+```
+
+All of these also run in GitHub Actions (`.github/workflows/ci.yml`) on every pull request and every push to `main`, as four checks: `backend-test`, `backend-lint`, `frontend-test`, and `frontend-checks`.
+
 ## Core Capabilities
 
 - Search papers on arXiv

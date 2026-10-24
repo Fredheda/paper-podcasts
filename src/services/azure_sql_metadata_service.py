@@ -83,15 +83,30 @@ class AzureSqlMetadataService(MetadataStore):
         authors_json = json.dumps(
             [{"name": a.name, "affiliation": a.affiliation} for a in paper.authors]
         )
-        last_listened_at = paper.last_listened_at.isoformat() if paper.last_listened_at else None
+        last_listened_at = (
+            paper.last_listened_at.isoformat() if paper.last_listened_at else None
+        )
         published = paper.published.isoformat()
 
         params = (
             paper.arxiv_id,
-            paper.cleaned_title, paper.title, authors_json, paper.abstract,
-            published, paper.status, paper.listen_status, last_listened_at,
-            paper.arxiv_id, paper.cleaned_title, paper.title, authors_json, paper.abstract,
-            published, paper.status, paper.listen_status, last_listened_at,
+            paper.cleaned_title,
+            paper.title,
+            authors_json,
+            paper.abstract,
+            published,
+            paper.status,
+            paper.listen_status,
+            last_listened_at,
+            paper.arxiv_id,
+            paper.cleaned_title,
+            paper.title,
+            authors_json,
+            paper.abstract,
+            published,
+            paper.status,
+            paper.listen_status,
+            last_listened_at,
         )
 
         conn = self._connect()
@@ -153,7 +168,11 @@ class AzureSqlMetadataService(MetadataStore):
             cursor.execute(
                 "UPDATE papers SET listen_status = ?, last_listened_at = ?, "
                 "updated_at = SYSUTCDATETIME() WHERE arxiv_id = ?",
-                (listen_status, last_listened_at.isoformat() if last_listened_at else None, arxiv_id),
+                (
+                    listen_status,
+                    last_listened_at.isoformat() if last_listened_at else None,
+                    arxiv_id,
+                ),
             )
             conn.commit()
         finally:

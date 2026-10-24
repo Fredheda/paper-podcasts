@@ -1,15 +1,15 @@
 """Service for interacting with the arXiv API."""
 
-import json
-import time
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List
-import arxiv
-from ..models.paper import Paper, Author
-from ..models.download_result import DownloadResult
 
+import arxiv
+
+from ..models.download_result import DownloadResult
+from ..models.paper import Author, Paper
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class ArxivService:
             updated=result.updated,
             categories=result.categories,
             primary_category=result.primary_category,
-            pdf_url=result.pdf_url,
+            pdf_url=result.pdf_url or "",
             comment=result.comment,
             journal_ref=result.journal_ref,
             doi=result.doi,
@@ -103,7 +103,7 @@ class ArxivService:
 
         self._rate_limit()
         papers = []
-        
+
         try:
             for result in self.client.results(search):
                 paper = self._arxiv_result_to_paper(result)
@@ -161,8 +161,7 @@ class ArxivService:
 
             # Download using arxiv library's download_pdf method
             output_path = result.download_pdf(
-                dirpath=str(destination_path),
-                filename=pdf_filename
+                dirpath=str(destination_path), filename=pdf_filename
             )
 
             pdf_path = Path(output_path)

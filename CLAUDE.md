@@ -2,6 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> This repo lives inside a multi-repo workspace with its own root `CLAUDE.md`
+> (`../CLAUDE.md`, one level up) covering workspace-wide conventions — where
+> specs/plans go, the git rule, shared MCP/skill usage. Keep that
+> file's per-project facts about this repo (test-suite status, architecture
+> pointers, etc.) in sync whenever they drift from what's true here.
+
+**Git:** you may run git freely up to a commit, and push a feature branch and
+open a PR. Ask first for `pull`, `fetch`, `rebase`, `reset`, force-push, or
+anything on `main`. Reviewing and merging PRs is the user's alone — hand over
+the PR URL. Commit messages are 2 lines at most, with no `Co-Authored-By`
+trailer. Full rule in the root `CLAUDE.md` linked above.
+
+**Response style:** use the `caveman` skill for responses in this repo —
+invoke it before replying, not just when asked.
+
 ## Quick Start Commands
 
 One app (`backend/` FastAPI + `frontend/` React/Vite) wraps the shared
@@ -33,6 +48,26 @@ Create a root `.env` file with:
 ```
 OPENAI_API_KEY=your_key_here
 ```
+
+## Checks
+
+Backend, from the repo root (needs `poetry install --with backend,dev`):
+
+```bash
+poetry run pytest -v
+poetry run ruff check . && poetry run ruff format --check .
+poetry run pyright
+```
+
+Frontend, from `frontend/`:
+
+```bash
+npm test          # vitest (jsdom + Testing Library)
+npm run lint      # eslint
+npm run build     # tsc -b && vite build (also the type check)
+```
+
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request and every push to `main`, as four checks: `backend-test`, `backend-lint`, `frontend-test`, and `frontend-checks`.
 
 ## Architecture Overview
 
@@ -192,9 +227,10 @@ deployed with `infra/deploy.sh`.
 Workflows: provision or change infra with `infra/deploy.sh [tag]`. Steady
 state (code changes): `scripts/ship.sh` (build+push then roll both apps;
 needs a clean tree + `az login`). Grant access with
-`scripts/approve-user.sh <email>`. Both apps scale to zero
-(`minReplicas: 0`, `cooldownPeriod: 300`) — first request after idle takes
-~15–40s. A replica dying mid-processing loses only that in-flight stage's
+`scripts/approve-user.sh <email>`. Both apps scale to zero (`minReplicas: 0`
+in `infra/main.bicep`; `cooldownPeriod` isn't set explicitly, so Container
+Apps' platform-default 300s/5-minute cooldown before scale-down applies) —
+first request after idle takes ~15–40s. A replica dying mid-processing loses only that in-flight stage's
 LLM/TTS spend; re-triggering resumes from the last durably-saved stage (see
 the spec's "Error handling"). The environment omits `appLogsConfiguration`
 (no Log Analytics meter); live logs via `az containerapp logs show
@@ -218,11 +254,3 @@ for how it was diagnosed. Separately, the frontend's own polling
 active/queued job (`IDLE_PAUSE_MS`) and resumes immediately on tab focus or
 a search/enqueue action — without that, an open tab would poll forever and
 neither container app's cooldown could ever complete.
-
-# Fred's Personal Claude Preferences
-
-
-## MCP Servers
-
-### Context7
-  - You have access to context7 which provides access to up-to-date documentation. Use it often, whenever it might be helpful.

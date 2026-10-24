@@ -1,13 +1,14 @@
 """Service for extracting content from PDF files using MarkItDown."""
 
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
 from markitdown import MarkItDown
-from datetime import datetime
+
 from ..models.extracted_content import ExtractedContent
 from ..models.extraction_result import ExtractionResult
-
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +50,9 @@ class PdfService:
             # Convert PDF to markdown
             result = self.converter.convert(str(pdf_path))
 
-            content = ExtractedContent(
-                markdown=result.text_content
-            )
+            content = ExtractedContent(markdown=result.text_content)
 
-            logger.info(
-                f"Successfully extracted {len(content.markdown)} characters"
-            )
+            logger.info(f"Successfully extracted {len(content.markdown)} characters")
 
             return content
 

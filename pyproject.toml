@@ -30,10 +30,26 @@ mssql-python = "1.12.0"
 pytest = "9.1.1"
 httpx = "0.28.1"
 honcho = "2.0.0"
+ruff = "0.17.2"
+pyright = "1.1.414"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py313"
+extend-exclude = ["**/.venv", "frontend"]
+
+[tool.ruff.lint]
+# ruff's default rules (E4, E7, E9, F) plus import sorting (I)
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.pyright]
+include = ["src", "backend", "scripts", "tests"]
+exclude = ["**/.venv", "frontend"]
+pythonVersion = "3.13"
+typeCheckingMode = "basic"
 
 [build-system]
 requires = ["poetry-core>=2.0"]

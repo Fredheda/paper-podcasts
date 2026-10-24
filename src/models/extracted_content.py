@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+
 @dataclass
 class ExtractedContent:
     """Represents content extracted from a PDF using MarkItDown."""

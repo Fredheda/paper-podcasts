@@ -17,7 +17,7 @@ import hmac
 import os
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from fastapi import Request
 from fastapi.responses import JSONResponse, Response
@@ -25,7 +25,12 @@ from fastapi.responses import JSONResponse, Response
 BACKEND_API_KEY = os.getenv("BACKEND_API_KEY")
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
 FORCE_HTTPS = os.getenv("FORCE_HTTPS", "false").lower() in {"1", "true", "yes", "on"}
-TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").lower() in {"1", "true", "yes", "on"}
+TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 _RATE_LIMIT_LOCK = threading.Lock()
 _RATE_LIMIT_BUCKETS: dict[str, list[float]] = {}
@@ -50,7 +55,9 @@ def _is_rate_limited(client_id: str) -> bool:
         return False
 
 
-async def security_middleware(request: Request, call_next: Callable[..., Response]) -> Response:
+async def security_middleware(
+    request: Request, call_next: Callable[..., Awaitable[Response]]
+) -> Response:
     """Global request checks + response hardening headers.
 
     Request checks:
@@ -66,15 +73,25 @@ async def security_middleware(request: Request, call_next: Callable[..., Respons
     """
     if FORCE_HTTPS:
         # Trust X-Forwarded-Proto only when explicitly configured behind a trusted proxy.
-        proto = request.headers.get("x-forwarded-proto", request.url.scheme) if TRUST_PROXY_HEADERS else request.url.scheme
+        proto = (
+            request.headers.get("x-forwarded-proto", request.url.scheme)
+            if TRUST_PROXY_HEADERS
+            else request.url.scheme
+        )
         if proto != "https":
-            return JSONResponse(status_code=400, content={"detail": "HTTPS is required"})
+            return JSONResponse(
+                status_code=400, content={"detail": "HTTPS is required"}
+            )
 
     client_id = request.client.host if request.client else "unknown"
     if request.url.path != "/health" and _is_rate_limited(client_id):
         return JSONResponse(status_code=429, content={"detail": "Too Many Requests"})
 
-    if BACKEND_API_KEY and request.method != "OPTIONS" and request.url.path != "/health":
+    if (
+        BACKEND_API_KEY
+        and request.method != "OPTIONS"
+        and request.url.path != "/health"
+    ):
         provided_key = request.headers.get("x-api-key", "")
         if not hmac.compare_digest(provided_key, BACKEND_API_KEY):
             return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
@@ -84,6 +101,7 @@ async def security_middleware(request: Request, call_next: Callable[..., Respons
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Frame-Options"] = "DENY"
     if FORCE_HTTPS:
-        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=63072000; includeSubDomains"
+        )
     return response
-

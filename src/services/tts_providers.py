@@ -16,7 +16,7 @@ class TTSProvider(ABC):
     def generate_audio(
         self,
         text: str,
-        voice: str,
+        voice: Optional[str],
         output_path: str | Path,
     ) -> str:
         """
@@ -24,7 +24,7 @@ class TTSProvider(ABC):
 
         Args:
             text: Text to convert to speech
-            voice: Voice to use
+            voice: Voice to use (the provider's default if None)
             output_path: Where to save audio file
 
         Returns:
@@ -61,6 +61,7 @@ class OpenAITTSProvider(TTSProvider):
 
         try:
             from openai import OpenAI
+
             self.client = OpenAI(api_key=self.api_key)
         except ImportError:
             raise ImportError(
@@ -103,7 +104,7 @@ class OpenAITTSProvider(TTSProvider):
                 model=self.model,
                 voice=voice,
                 input=text,
-                instructions="The text includes markdown and/or html formatting tags which should be treated as such."
+                instructions="The text includes markdown and/or html formatting tags which should be treated as such.",
             ) as response:
                 response.stream_to_file(str(output_file))
 

@@ -6,20 +6,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from ..services.artifact_store import ArtifactStore
-from ..services.metadata_store import MetadataStore
-
-from .paper_workflow import PaperWorkflow
-from ..models.paper import Paper
-from ..models.download_result import DownloadResult
-from ..models.extraction_result import ExtractionResult
-from ..models.extracted_content import ExtractedContent
-from ..models.summary_result import SummaryResult
 from ..models.audio_result import AudioResult
+from ..models.download_result import DownloadResult
+from ..models.extracted_content import ExtractedContent
+from ..models.extraction_result import ExtractionResult
+from ..models.paper import Paper
+from ..models.summary_result import SummaryResult
+from ..services.artifact_store import ArtifactStore
 from ..services.arxiv_service import ArxivService
-from ..services.pdf_service import PdfService
-from ..services.llm_service import LLMService
 from ..services.audio_service import AudioService
+from ..services.llm_service import LLMService
+from ..services.metadata_store import MetadataStore
+from ..services.pdf_service import PdfService
+from .paper_workflow import PaperWorkflow
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +79,9 @@ class PipelineResult:
             "audio": self.audio.to_dict() if self.audio else None,
             "errors": self.errors,
             "started_at": self.started_at.isoformat(),
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
         }
 
 
@@ -193,7 +194,9 @@ class PaperPipeline:
                 if not result.download:
                     result.download = self._load_download_result(paper)
                 if result.download:
-                    result.extraction = self._stage_extract(paper, result.download, workflow)
+                    result.extraction = self._stage_extract(
+                        paper, result.download, workflow
+                    )
 
             # Summarize stage - lazy load extraction result if needed
             if "summarize" in stages and workflow.can_summarize():
@@ -233,9 +236,7 @@ class PaperPipeline:
 
         return result
 
-    def _stage_download(
-        self, paper: Paper, workflow: PaperWorkflow
-    ) -> DownloadResult:
+    def _stage_download(self, paper: Paper, workflow: PaperWorkflow) -> DownloadResult:
         """
         Execute download stage.
 
@@ -339,7 +340,9 @@ class PaperPipeline:
             )
             self._upload_artifact(result.saved_path)
 
-            logger.info(f"Summarized paper. Length of summary: {len(result.summary_text)} characters")
+            logger.info(
+                f"Summarized paper. Length of summary: {len(result.summary_text)} characters"
+            )
             workflow.complete_summarize()
             self._save_paper_state(paper)
             logger.info(f"[SUMMARIZE] Completed. Saved to {result.saved_path}")
@@ -364,7 +367,7 @@ class PaperPipeline:
         Returns:
             AudioResult with audio file and metadata
         """
-        logger.info(f"[AUDIO] Starting audio generation")
+        logger.info("[AUDIO] Starting audio generation")
         workflow.start_audio_generation()
 
         try:
@@ -424,7 +427,7 @@ class PaperPipeline:
             workflow.finalize()
         elif workflow.current_state == workflow.failed:
             logger.warning(
-                f"Cannot resume from failed state. "
+                "Cannot resume from failed state. "
                 "Failed is a terminal state - create a new paper instance to retry."
             )
             stages = []

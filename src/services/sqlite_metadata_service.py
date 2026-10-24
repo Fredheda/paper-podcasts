@@ -67,7 +67,9 @@ class SqliteMetadataService(MetadataStore):
         authors_json = json.dumps(
             [{"name": a.name, "affiliation": a.affiliation} for a in paper.authors]
         )
-        last_listened_at = paper.last_listened_at.isoformat() if paper.last_listened_at else None
+        last_listened_at = (
+            paper.last_listened_at.isoformat() if paper.last_listened_at else None
+        )
         published = paper.published.isoformat()
         now = datetime.now().isoformat()
 
@@ -91,9 +93,17 @@ class SqliteMetadataService(MetadataStore):
                     updated_at = excluded.updated_at
                 """,
                 (
-                    paper.arxiv_id, paper.cleaned_title, paper.title, authors_json,
-                    paper.abstract, published, paper.status, paper.listen_status,
-                    last_listened_at, now, now,
+                    paper.arxiv_id,
+                    paper.cleaned_title,
+                    paper.title,
+                    authors_json,
+                    paper.abstract,
+                    published,
+                    paper.status,
+                    paper.listen_status,
+                    last_listened_at,
+                    now,
+                    now,
                 ),
             )
             conn.commit()
@@ -118,7 +128,9 @@ class SqliteMetadataService(MetadataStore):
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         try:
-            rows = conn.execute("SELECT * FROM papers ORDER BY updated_at DESC").fetchall()
+            rows = conn.execute(
+                "SELECT * FROM papers ORDER BY updated_at DESC"
+            ).fetchall()
             return [self._row_to_dict(row) for row in rows]
         finally:
             conn.close()

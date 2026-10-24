@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .tts_providers import TTSProvider
 from ..models.audio_result import AudioResult
+from .tts_providers import TTSProvider
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,9 @@ def clean_text_for_tts(text: str) -> str:
         Clean text suitable for text-to-speech
     """
     # Remove HTML tags
-    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r"<[^>]+>", "", text)
     # Remove markdown headers (# ## ### etc.)
-    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
     return text
 
 

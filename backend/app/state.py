@@ -14,10 +14,9 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from .config import DATA_DIR, DEFAULT_MAX_CONCURRENT, PROMPTS_DIR, STORAGE_BACKEND
 from src.pipeline.paper_pipeline import PaperPipeline
-from src.services.arxiv_service import ArxivService
 from src.services.artifact_store import ArtifactStore
+from src.services.arxiv_service import ArxivService
 from src.services.audio_service import AudioService
 from src.services.azure_sql_metadata_service import AzureSqlMetadataService
 from src.services.blob_storage_service import BlobStorageService
@@ -29,6 +28,8 @@ from src.services.pdf_service import PdfService
 from src.services.processing_manager import ProcessingManager
 from src.services.sqlite_metadata_service import SqliteMetadataService
 from src.services.tts_providers import OpenAITTSProvider
+
+from .config import DATA_DIR, DEFAULT_MAX_CONCURRENT, PROMPTS_DIR, STORAGE_BACKEND
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +52,19 @@ state = AppState()
 def require_state() -> tuple[ArxivService, ProcessingManager]:
     """Guard helper for routes that need initialized services."""
     if state.arxiv is None or state.processing is None:
-        raise HTTPException(status_code=503, detail="Backend services are not initialized")
+        raise HTTPException(
+            status_code=503, detail="Backend services are not initialized"
+        )
     return state.arxiv, state.processing
+
+
+def require_storage() -> tuple[MetadataStore, ArtifactStore]:
+    """Guard helper for routes that read the metadata and artifact stores."""
+    if state.metadata_service is None or state.blob_service is None:
+        raise HTTPException(
+            status_code=503, detail="Backend services are not initialized"
+        )
+    return state.metadata_service, state.blob_service
 
 
 @asynccontextmanager
@@ -74,7 +86,9 @@ async def lifespan(_: object):
     blob_service: ArtifactStore
     metadata_service: MetadataStore
     if STORAGE_BACKEND == "azure":
-        blob_service = BlobStorageService(account_name=os.environ["AZURE_STORAGE_ACCOUNT"])
+        blob_service = BlobStorageService(
+            account_name=os.environ["AZURE_STORAGE_ACCOUNT"]
+        )
         metadata_service = AzureSqlMetadataService()
     else:
         blob_service = LocalFileStorageService(root_dir=DATA_DIR / "papers")
@@ -92,16 +106,21 @@ async def lifespan(_: object):
 
     state.arxiv = arxiv_service
     state.pipeline = pipeline
-    state.processing = ProcessingManager(pipeline, max_concurrent=DEFAULT_MAX_CONCURRENT)
+    state.processing = ProcessingManager(
+        pipeline, max_concurrent=DEFAULT_MAX_CONCURRENT
+    )
     state.llm_provider = llm_provider
     state.blob_service = blob_service
     state.metadata_service = metadata_service
 
-    logger.info("Backend initialized with data dir: %s, storage backend: %s", DATA_DIR, STORAGE_BACKEND)
+    logger.info(
+        "Backend initialized with data dir: %s, storage backend: %s",
+        DATA_DIR,
+        STORAGE_BACKEND,
+    )
 
     try:
         yield
     finally:
         if state.processing:
             state.processing.shutdown()
-
