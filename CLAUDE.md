@@ -11,7 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Git:** you may run git freely up to a commit, and push a feature branch and
 open a PR. Ask first for `pull`, `fetch`, `rebase`, `reset`, force-push, or
 anything on `main`. Reviewing and merging PRs is the user's alone — hand over
-the PR URL. Full rule in the root `CLAUDE.md` linked above.
+the PR URL. Commit messages are 2 lines at most, with no `Co-Authored-By`
+trailer. Full rule in the root `CLAUDE.md` linked above.
 
 **Response style:** use the `caveman` skill for responses in this repo —
 invoke it before replying, not just when asked.
@@ -47,6 +48,26 @@ Create a root `.env` file with:
 ```
 OPENAI_API_KEY=your_key_here
 ```
+
+## Checks
+
+Backend, from the repo root (needs `poetry install --with backend,dev`):
+
+```bash
+poetry run pytest -v
+poetry run ruff check . && poetry run ruff format --check .
+poetry run pyright
+```
+
+Frontend, from `frontend/`:
+
+```bash
+npm test          # vitest (jsdom + Testing Library)
+npm run lint      # eslint
+npm run build     # tsc -b && vite build (also the type check)
+```
+
+CI (`.github/workflows/ci.yml`) runs all of these on every pull request and every push to `main`, as four checks: `backend-test`, `backend-lint`, `frontend-test`, and `frontend-checks`.
 
 ## Architecture Overview
 
