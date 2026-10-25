@@ -69,6 +69,8 @@ npm run build     # tsc -b && vite build (also the type check)
 
 CI (`.github/workflows/ci.yml`) runs all of these on every pull request and every push to `main`, as four checks: `backend-test`, `backend-lint`, `frontend-test`, and `frontend-checks`.
 
+`.github/workflows/claude-review.yml` posts an AI security-first review when a PR is opened and on every push to it; the repo owner can also request one by commenting `@claude`. It is comment-only and authenticates with the `CLAUDE_CODE_OAUTH_TOKEN` repo secret, which expires about 2027-10-24: renew with `claude setup-token`, then `gh secret set CLAUDE_CODE_OAUTH_TOKEN`. If subscription auth is refused, switch the action input to `anthropic_api_key`. The review prompt tells Claude that `frontend/.env.production` is tracked on purpose; update it if that file ever holds a secret.
+
 ## Architecture Overview
 
 ### Core Pipeline Architecture
