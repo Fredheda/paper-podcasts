@@ -18,6 +18,10 @@ never the main checkout. Create one with `git worktree add
 tool) and remove it after the PR merges; details in the "Parallel sessions"
 section of the root `CLAUDE.md`. Commit messages are 2 lines at most, with no
 `Co-Authored-By` trailer. Full rule in the root `CLAUDE.md` linked above.
+PR titles and descriptions must not mention Claude Code or link the Claude
+session (no "Generated with Claude Code" footer).
+After opening a PR, wait for CI to pass (`gh pr checks --watch`), then read the
+LLM review comments and address them, before handing the PR URL over for review.
 
 **Response style:** use the `caveman` skill for responses in this repo —
 invoke it before replying, not just when asked.
