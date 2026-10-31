@@ -20,11 +20,11 @@ package-mode = false
 optional = true
 
 [tool.poetry.group.backend.dependencies]
-fastapi = "0.128.5"
-uvicorn = {version = "0.40.0", extras = ["standard"]}
-azure-storage-blob = "12.30.0"
-azure-identity = "1.25.3"
-mssql-python = "1.12.0"
+fastapi = "0.143.3"
+uvicorn = {version = "0.54.0", extras = ["standard"]}
+azure-storage-blob = "12.31.0"
+azure-identity = "1.26.0"
+mssql-python = "1.16.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "9.1.1"
