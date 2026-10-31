@@ -69,6 +69,22 @@ jobs:
             purpose and holds only a public API base URL; do not flag it unless
             it gains a secret.
 
+            **Documentation check (every PR).** Before you finish, check that
+            all documentation affected by this change was updated in the same
+            PR and is not stale. Documentation means README.md, CLAUDE.md,
+            DEPLOYMENT.md, EXPIRATIONS.md, specs and plans under docs/
+            (including their status lines and checkboxes), script and workflow
+            header comments, command tables and lists of jobs, scripts or
+            environment variables. Report as findings: (1) documentation that
+            now contradicts the code or configuration; (2) a new or changed
+            command, script, workflow, job, environment variable, secret,
+            setting or behavior with no matching documentation change; (3)
+            stale names, paths, counts or versions. Cite file and line. If
+            everything is current, say so in one line ("Docs: current").
+            In this repo the deployment and operations docs live under
+            deployment/ (README.md, infra.md, local.md, operations.md,
+            expirations.md), not at the repo root.
+
             Check security first:
             - committed .env files, key files, or .pem files
             - hardcoded secrets, tokens, or connection strings

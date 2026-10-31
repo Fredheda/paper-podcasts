@@ -20,8 +20,12 @@ section of the root `CLAUDE.md`. Commit messages are 2 lines at most, with no
 `Co-Authored-By` trailer. Full rule in the root `CLAUDE.md` linked above.
 PR titles and descriptions must not mention Claude Code or link the Claude
 session (no "Generated with Claude Code" footer).
-After opening a PR, wait for CI to pass (`gh pr checks --watch`), then read the
-LLM review comments and address them, before handing the PR URL over for review.
+After opening a PR, wait for CI to pass (`gh pr checks --watch`), then read
+every automated review comment (`gh pr view <n> --comments`, plus inline
+comments) and address all of them, nits and documentation notes included,
+before handing the PR URL over for review. Address means fix it in the PR, or
+reply on the PR with the reason it stays as is. Never skip one silently. Push
+the fix and read the next review run too.
 
 **Response style:** use the `caveman` skill for responses in this repo —
 invoke it before replying, not just when asked.
@@ -44,7 +48,7 @@ poetry run ruff check . && poetry run ruff format --check . && poetry run pyrigh
 cd frontend && npm test && npm run lint && npm run build
 ```
 
-CI (`.github/workflows/ci.yml`) runs all of this on every PR and push to `main`: `backend-test`, `backend-lint`, `frontend-test`, `frontend-checks`. `.github/workflows/claude-review.yml` posts an AI security review on PRs and on pushes; the owner can also request one by commenting `@claude` (comment-only; the `CLAUDE_CODE_OAUTH_TOKEN` secret expires about 2027-10-24, see `deployment/expirations.md`). Its prompt says `frontend/.env.production` is tracked on purpose; update the prompt if that file ever holds a secret.
+CI (`.github/workflows/ci.yml`) runs all of this on every PR and push to `main`: `backend-test`, `backend-lint`, `frontend-test`, `frontend-checks`. `.github/workflows/claude-review.yml` posts an AI security review plus a documentation check (flags stale or missing doc updates, or says "Docs: current") on PRs and on pushes; the owner can also request one by commenting `@claude` (comment-only; the `CLAUDE_CODE_OAUTH_TOKEN` secret expires about 2027-10-24, see `deployment/expirations.md`). Its prompt says `frontend/.env.production` is tracked on purpose; update the prompt if that file ever holds a secret.
 
 Env vars: `OPENAI_API_KEY` (required, OpenAI is the only provider); `STORAGE_BACKEND` (`local` default, or `azure` with `AZURE_STORAGE_ACCOUNT`, `AZURE_SQL_SERVER`, `AZURE_SQL_DATABASE`, `AZURE_CLIENT_ID`); `BACKEND_API_KEY`, `RATE_LIMIT_PER_MINUTE`, `FORCE_HTTPS`, `TRUST_PROXY_HEADERS`. Defaults in `docs/development.md`.
 
