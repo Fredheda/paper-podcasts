@@ -57,6 +57,10 @@ updates:
       docker-backend-minor-patch:
         patterns: ["*"]
         update-types: [minor, patch]
+    # Stay on Python 3.13 (pinned by .python-version); patches still arrive.
+    ignore:
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: docker
     directory: /frontend
@@ -70,3 +74,7 @@ updates:
       docker-frontend-minor-patch:
         patterns: ["*"]
         update-types: [minor, patch]
+    # Stay on Node 24 LTS; patches still arrive. Odd Node majors are not LTS.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
