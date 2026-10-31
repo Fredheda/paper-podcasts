@@ -32,9 +32,12 @@ case "$*" in
     # Record where the build ran from and what the context holds.
     { echo "PWD=$PWD"; ls -A "${@: -1}"; } >> "$FAKE_LOG.ctx"
     [ "$repo" = "${FAKE_FAIL_BUILD:-}" ] && exit 1
+    # A successful build makes the image exist from now on.
+    echo "$*" | grep -oE -- '--image [^ ]+' | cut -d' ' -f2 >> "$FAKE_LOG.built"
     exit 0 ;;
   "acr repository show"*)
     image=$(echo "$*" | sed -E 's/.*--image ([^ ]+).*/\1/')
+    grep -qxF "$image" "$FAKE_LOG.built" 2>/dev/null && exit 0
     case ",${FAKE_MISSING:-}," in *",$image,"*) exit 1 ;; esac
     exit 0 ;;
   "containerapp update"*)
