@@ -23,7 +23,7 @@ optional = true
 fastapi = "0.128.5"
 uvicorn = {version = "0.40.0", extras = ["standard"]}
 azure-storage-blob = "12.30.0"
-azure-identity = "1.25.3"
+azure-identity = "1.26.0"
 mssql-python = "1.12.0"
 
 [tool.poetry.group.dev.dependencies]
