@@ -1,0 +1,50 @@
+# Weekly version updates. Security updates are enabled separately in the repo
+# settings. `cooldown` makes Dependabot wait 14 days after a release before it
+# proposes it, which keeps freshly published (possibly compromised) versions
+# out. Poetry projects use the `pip` ecosystem.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    cooldown:
+      default-days: 14
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    cooldown:
+      default-days: 14
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    cooldown:
+      default-days: 14
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    cooldown:
+      default-days: 14
+
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    cooldown:
+      default-days: 14
