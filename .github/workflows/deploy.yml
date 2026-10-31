@@ -1,0 +1,100 @@
+name: Deploy
+
+# Manual only. Builds the two images for a commit on main (scripts/build-push.sh
+# skips any image that already exists, so a repeat deploy or a rollback to an
+# already-built commit builds nothing), then rolls ca-podcasts-agent and
+# ca-podcasts-web to them. CI never builds.
+# Run it from the Actions tab or: gh workflow run deploy.yml --ref main
+# Rollback is the same button with an older commit SHA.
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full commit SHA to deploy (empty = the head of main)
+        required: false
+        default: ""
+
+# One deploy at a time; a second click waits instead of racing the first.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # The history is fetched here; later steps only read it locally, so
+          # keep the job's git token off disk while the Azure session is open.
+          persist-credentials: false
+
+      # Everything that can be checked without Azure is checked before logging in.
+      - name: Resolve and validate the commit
+        env:
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          sha="$(echo "${INPUT_SHA:-$GITHUB_SHA}" | tr -d '[:space:]')"
+          if ! echo "$sha" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::'$sha' is not a full 40-character commit SHA."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::$sha is not on main; only merged commits can be deployed."
+            exit 1
+          fi
+          echo "SHA=$sha" >> "$GITHUB_ENV"
+
+      # OIDC login with the Azure CLI (the repo only allows a short list of
+      # third-party actions, so azure/login is not used). The build and the
+      # deploy use separate identities: the build identity can push images but
+      # cannot change container apps.
+      - name: Log in to Azure to build
+        env:
+          # Secrets rather than variables, so run logs mask the values.
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          CLIENT_ID: ${{ secrets.AZURE_BUILD_CLIENT_ID }}
+        run: ./scripts/ci-azure-login.sh "$CLIENT_ID"
+
+      - name: Build the images
+        run: ./scripts/build-push.sh "$SHA"
+
+      - name: Log in to Azure to deploy
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          CLIENT_ID: ${{ secrets.AZURE_DEPLOY_CLIENT_ID }}
+        run: ./scripts/ci-azure-login.sh "$CLIENT_ID"
+
+      - name: Roll the apps
+        run: ./scripts/redeploy.sh "$SHA"
+
+      - name: Wait for the new revisions
+        run: ./scripts/wait-healthy.sh
+
+      - name: Summary
+        run: |
+          {
+            echo "### Deployed \`$SHA\`"
+            echo
+            git log -1 --format=%s "$SHA"
+            echo
+            for app in ca-podcasts-agent ca-podcasts-web; do
+              image=$(az containerapp show -n "$app" -g rg-chatbot \
+                --query "properties.template.containers[0].image" -o tsv)
+              revision=$(az containerapp show -n "$app" -g rg-chatbot \
+                --query "properties.latestRevisionName" -o tsv)
+              echo "- \`$app\`: \`$image\` (revision \`$revision\`)"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

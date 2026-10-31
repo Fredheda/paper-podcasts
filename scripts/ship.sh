@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Ship a code change: build+push the images for the current commit, then roll
-# both container apps to them.
+# Laptop fallback for the Deploy workflow: build+push the images for the
+# current commit (build-push.sh skips images that exist), then roll both
+# container apps to them (redeploy.sh checks every image first and locks the
+# deployed tags). Same scripts the GitHub workflow runs.
 #
 # Use this for CODE changes (backend/, src/, frontend/). For INFRA changes
 # (infra/main.bicep, secrets, the OpenAI key) use ./infra/deploy.sh instead.

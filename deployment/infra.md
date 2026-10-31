@@ -5,7 +5,7 @@ Infrastructure is defined in `infra/main.bicep` and deployed with `infra/deploy.
 ## What exists
 
 - Two consumption-plan container apps, `ca-podcasts-agent` and `ca-podcasts-web`, in `rg-chatbot` / `cae-podcasts` (westeurope).
-- Images in ACR `acrchatbotfredheda.azurecr.io`, shared with `copilot-kit-exp` and `Portfolio`. Images are built with `scripts/build-push.sh` (`az acr build`), with no stored registry credentials.
+- Images in ACR `acrchatbotfredheda.azurecr.io`, shared with `copilot-kit-exp` and `Portfolio`. Images are built by the Deploy workflow with `scripts/build-push.sh` (`az acr build`), with no stored registry credentials. `infra/deploy.sh` defaults its image tag to local `HEAD`: pass the deployed SHA (`./infra/deploy.sh <deployed-sha>`), or the apps roll to that commit's images.
 - A user-assigned managed identity, `id-podcasts-acrpull`, with AcrPull and Storage Blob Data Contributor (the latter scoped to the `paper-podcasts` blob container). The apps use it to pull images and reach storage.
 - The backend runs with `STORAGE_BACKEND=azure`. It reuses the storage account `fhstorageportfolio` and the `PlaygroundDB` database on the `fhdbplayground` SQL server, both shared with `Portfolio`.
 - The OpenAI key lives only as the `openai-api-key` Container Apps secret.
