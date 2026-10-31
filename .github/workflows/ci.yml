@@ -1,4 +1,5 @@
 name: CI
+# Throwaway test comment; changes no job, command or behavior.
 
 on:
   pull_request:
