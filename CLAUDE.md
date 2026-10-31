@@ -20,8 +20,12 @@ section of the root `CLAUDE.md`. Commit messages are 2 lines at most, with no
 `Co-Authored-By` trailer. Full rule in the root `CLAUDE.md` linked above.
 PR titles and descriptions must not mention Claude Code or link the Claude
 session (no "Generated with Claude Code" footer).
-After opening a PR, wait for CI to pass (`gh pr checks --watch`), then read the
-LLM review comments and address them, before handing the PR URL over for review.
+After opening a PR, wait for CI to pass (`gh pr checks --watch`), then read
+every automated review comment (`gh pr view <n> --comments`, plus inline
+comments) and address all of them, nits and documentation notes included,
+before handing the PR URL over for review. Address means fix it in the PR, or
+reply on the PR with the reason it stays as is. Never skip one silently. Push
+the fix and read the next review run too.
 
 **Response style:** use the `caveman` skill for responses in this repo —
 invoke it before replying, not just when asked.

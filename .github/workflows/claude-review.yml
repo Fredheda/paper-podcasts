@@ -81,6 +81,9 @@ jobs:
             setting or behavior with no matching documentation change; (3)
             stale names, paths, counts or versions. Cite file and line. If
             everything is current, say so in one line ("Docs: current").
+            In this repo the deployment and operations docs live under
+            deployment/ (README.md, infra.md, local.md, operations.md,
+            expirations.md), not at the repo root.
 
             Check security first:
             - committed .env files, key files, or .pem files
