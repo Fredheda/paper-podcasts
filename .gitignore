@@ -1,11 +1,36 @@
 # OS / editor
 .DS_Store
 
+# Env / secrets. frontend/.env.production is tracked on purpose (it holds only
+# a public API base URL); an ignore pattern does not untrack a tracked file.
+.env
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+local.settings.json
+terraform.tfstate
+terraform.tfstate.*
+.azure/
+
 # Python
 __pycache__
-.env
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
 requirements.txt
 .venv/
+venv/
+
+# Logs
+npm-debug.log*
+*.log
+
+# Editors
+.idea/
+.vscode/
 
 # Generated artifacts
 *.pdf
