@@ -53,6 +53,13 @@ case "$*" in
     app=$(echo "$*" | sed -E 's/.*-n ([^ ]+).*/\1/')
     var="FAKE_IMAGE_$(echo "$app" | tr 'a-z-' 'A-Z_')"
     echo "${!var:-}"; exit 0 ;;
+  "identity federated-credential show"*)
+    [ -n "${FAKE_CRED_EXISTS:-}" ] && exit 0
+    exit 1 ;;
+  "identity show"*principalId*)
+    echo "principal-$(echo "$*" | sed -E 's/.*-n ([^ ]+).*/\1/')"; exit 0 ;;
+  "identity show"*clientId*)
+    echo "client-$(echo "$*" | sed -E 's/.*-n ([^ ]+).*/\1/')"; exit 0 ;;
   "acr task show"*)
     [ -n "${FAKE_NO_TASK:-}" ] && exit 1
     exit 0 ;;
