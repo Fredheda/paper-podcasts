@@ -75,7 +75,7 @@ npm run lint      # eslint
 npm run build     # tsc -b && vite build, which is also the type check
 ```
 
-CI (`.github/workflows/ci.yml`) runs all of these on every pull request and every push to `main`, as four checks: `backend-test`, `backend-lint`, `frontend-test` and `frontend-checks`.
+`./scripts/ci-local.sh` runs all of the above in the order CI does. CI (`.github/workflows/ci.yml`) runs them on pull requests only, as three jobs: `backend`, `frontend` and `frontend-build` (skipped on drafts and, with the others, on docs-only changes).
 
 ## Making a change
 

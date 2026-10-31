@@ -1,21 +1,48 @@
 name: CI
 
+# Pull requests only: a push to main starts no CI, because the PR already ran
+# it. Draft-first: a draft runs the light jobs; `frontend-build` (the heavy
+# one) and the AI review run once the PR is marked ready. Docs-only changes
+# skip every job below `changes`; a skipped job counts as passed for a
+# required check. Run the same checks locally with scripts/ci-local.sh.
 on:
   pull_request:
-  push:
-    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
 
-# A new push to the same PR cancels the run that is still going. Pushes to
-# main are never cancelled, so every commit on main gets a result.
+# A new push to the same PR cancels the run that is still going.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  backend-test:
+  # Plain git diff, no third-party action: `code` is false when every changed
+  # file is documentation (Markdown or docs/).
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -qvE '\.md$|^docs/'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -28,25 +55,14 @@ jobs:
           cache: poetry
       # The backend group is optional in pyproject.toml; the tests import it.
       - run: poetry install --with backend,dev --no-interaction
-      - run: poetry run pytest -v
-
-  backend-lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install Poetry
-        run: pipx install "poetry>=2.0,<3.0"
-      - uses: actions/setup-python@v7
-        with:
-          python-version-file: .python-version
-          cache: poetry
-      - run: poetry install --with backend,dev --no-interaction
       - run: poetry run ruff check .
       - run: poetry run ruff format --check .
       - run: poetry run pyright
+      - run: poetry run pytest -v
 
-  frontend-test:
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -61,9 +77,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       # Same flags as frontend/Dockerfile.
       - run: npm ci --ignore-scripts
+      - run: npm run lint
       - run: npm test
 
-  frontend-checks:
+  # Heavy: the production build, which `tsc -b && vite build` makes the type
+  # check too. Skipped on drafts.
+  frontend-build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -77,6 +98,4 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --ignore-scripts
-      - run: npm run lint
-      # `build` runs `tsc -b && vite build`, so it is also the type check.
       - run: npm run build

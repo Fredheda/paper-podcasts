@@ -1,13 +1,13 @@
 name: Claude Review
 
-# Reviews a PR when it opens and on every push to it, and again whenever the
-# repo owner comments `@claude` on it. Each run draws on the Claude
-# subscription usage limit; the per-PR concurrency group cancels a review that
-# a newer push has made stale.
+# Reviews a ready PR when it opens, when it is marked ready and on every push
+# to it (never a draft), and again whenever the repo owner comments `@claude`
+# on it. Each run draws on the Claude subscription usage limit; the per-PR
+# concurrency group cancels a review that a newer push has made stale.
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, ready_for_review]
   issue_comment:
     types: [created]
 
@@ -21,8 +21,10 @@ jobs:
   review:
     # Fork and bot-authored PRs get no repo secrets, so skip them instead of
     # failing on authentication.
+    # Drafts are skipped; the review runs when the PR is marked ready.
     if: >-
       github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'dependabot[bot]'
     permissions:
