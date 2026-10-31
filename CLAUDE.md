@@ -44,7 +44,7 @@ poetry run ruff check . && poetry run ruff format --check . && poetry run pyrigh
 cd frontend && npm test && npm run lint && npm run build
 ```
 
-CI (`.github/workflows/ci.yml`) runs all of this on every PR and push to `main`: `backend-test`, `backend-lint`, `frontend-test`, `frontend-checks`. `.github/workflows/claude-review.yml` posts an AI security review on PRs and on pushes; the owner can also request one by commenting `@claude` (comment-only; the `CLAUDE_CODE_OAUTH_TOKEN` secret expires about 2027-10-24, see `deployment/expirations.md`). Its prompt says `frontend/.env.production` is tracked on purpose; update the prompt if that file ever holds a secret.
+CI (`.github/workflows/ci.yml`) runs all of this on every PR and push to `main`: `backend-test`, `backend-lint`, `frontend-test`, `frontend-checks`. `.github/workflows/claude-review.yml` posts an AI security review plus a documentation check (flags stale or missing doc updates, or says "Docs: current") on PRs and on pushes; the owner can also request one by commenting `@claude` (comment-only; the `CLAUDE_CODE_OAUTH_TOKEN` secret expires about 2027-10-24, see `deployment/expirations.md`). Its prompt says `frontend/.env.production` is tracked on purpose; update the prompt if that file ever holds a secret.
 
 Env vars: `OPENAI_API_KEY` (required, OpenAI is the only provider); `STORAGE_BACKEND` (`local` default, or `azure` with `AZURE_STORAGE_ACCOUNT`, `AZURE_SQL_SERVER`, `AZURE_SQL_DATABASE`, `AZURE_CLIENT_ID`); `BACKEND_API_KEY`, `RATE_LIMIT_PER_MINUTE`, `FORCE_HTTPS`, `TRUST_PROXY_HEADERS`. Defaults in `docs/development.md`.
 
