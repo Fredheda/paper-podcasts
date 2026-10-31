@@ -1,7 +1,9 @@
 # Weekly version updates. Security updates are enabled separately in the repo
 # settings. `cooldown` makes Dependabot wait 14 days after a release before it
 # proposes it, which keeps freshly published (possibly compromised) versions
-# out. Poetry projects use the `pip` ecosystem.
+# out. Each ecosystem groups its minor and patch updates into one PR per run
+# (fewer PRs, fewer CI runs); major updates stay separate PRs so each gets its
+# own review. Poetry projects use the `pip` ecosystem.
 version: 2
 updates:
   - package-ecosystem: pip
@@ -12,6 +14,10 @@ updates:
     labels: [dependencies]
     cooldown:
       default-days: 14
+    groups:
+      pip-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
 
   - package-ecosystem: npm
     directory: /frontend
@@ -21,6 +27,10 @@ updates:
     labels: [dependencies]
     cooldown:
       default-days: 14
+    groups:
+      npm-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
 
   - package-ecosystem: github-actions
     directory: /
@@ -30,6 +40,10 @@ updates:
     labels: [dependencies]
     cooldown:
       default-days: 14
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
 
   - package-ecosystem: docker
     directory: /backend
@@ -39,6 +53,10 @@ updates:
     labels: [dependencies]
     cooldown:
       default-days: 14
+    groups:
+      docker-backend-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
 
   - package-ecosystem: docker
     directory: /frontend
@@ -48,3 +66,7 @@ updates:
     labels: [dependencies]
     cooldown:
       default-days: 14
+    groups:
+      docker-frontend-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
