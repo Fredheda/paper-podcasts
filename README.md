@@ -1,89 +1,68 @@
 # Paper Podcasts
 
-Paper Podcasts turns arXiv papers into summaries and audio: search arXiv,
-enqueue papers, and get back a rich summary plus a generated audio version,
-backed by a state-machine-driven processing pipeline.
+Turn arXiv papers into rich summaries and listenable audio, then chat with the papers in your library.
 
-Live at [podcasts.frederikheda.com](https://podcasts.frederikheda.com)
-(Easy Auth gated). See `CLAUDE.md`'s "Deployment (Azure Container Apps)"
-section and `DEPLOYMENT.md` for how that's run.
+Private deployment behind authentication, not publicly accessible.
 
-## Repository Layout
+<!-- screenshot -->
 
-- `src/`: shared domain models, services, and pipeline
-- `prompts/`: shared LLM prompts
-- `data/`: local runtime artifacts (state, extracted text, summaries, audio)
-  — only used when `STORAGE_BACKEND=local` (the default for local dev)
-- `assets/`: static images/diagrams
+## What it does
+
+- Search arXiv and queue one or several papers for processing.
+- Watch each job move through download, text extraction, summary and audio generation, with live stage and progress updates.
+- Browse a library of processed papers, filtered by processing status and by listened or unlistened.
+- Read an audio-friendly summary for each paper, rendered in the app. The full paper opens on arXiv.
+- Play the generated audio and mark papers as listened.
+- Chat with one or more papers from the library; answers stream in and are grounded in the extracted paper text.
+
+## How it works
+
+```mermaid
+flowchart LR
+    UI["React SPA"] -->|"/api (proxied)"| API["FastAPI backend"]
+    API --> PM["ProcessingManager<br/>(worker queue)"]
+    PM --> P["PaperPipeline<br/>(state machine)"]
+    P --> A["arXiv<br/>download"]
+    P --> X["PDF to markdown<br/>(markitdown)"]
+    P --> L["LLM summary<br/>(OpenAI)"]
+    P --> T["Text-to-speech<br/>(OpenAI)"]
+    API --> S[("Artifacts + metadata<br/>local, or Blob Storage + Azure SQL")]
+    P --> S
+    API -->|"SSE stream"| C["Paper chat (LLM)"]
+```
+
+A shared pipeline in `src/` takes each paper through four stages. A state machine
+(`python-statemachine`) guards every transition, so a stage never runs twice and a
+failed or interrupted job resumes from the last saved stage. A background
+`ProcessingManager` runs several jobs concurrently and queues the overflow.
+
+Every service sits behind a provider interface (LLM, text-to-speech), and storage sits
+behind an artifact store and a metadata store. Locally these are the filesystem and
+SQLite, with no cloud setup. In production they are Azure Blob Storage and Azure SQL.
+
+The browser only ever talks to the web server that serves the React app, which proxies
+`/api` to the backend. In production the backend has no public ingress.
+
+## Tech stack
+
+- **Python 3.13, FastAPI, uvicorn**: API, job queue and chat streaming (server-sent events).
+- **python-statemachine**: the paper-processing state machine.
+- **OpenAI API**: paper summaries, paper chat and text-to-speech audio.
+- **markitdown**: PDF to markdown extraction.
+- **React, TypeScript, Vite, Tailwind CSS**: the web UI.
+- **SQLite and the local filesystem / Azure SQL and Blob Storage**: storage, chosen with `STORAGE_BACKEND`.
+- **Azure Container Apps, Bicep, Entra Easy Auth**: hosting, infrastructure as code and sign-in.
+- **pytest, ruff, pyright, vitest, GitHub Actions**: tests, lint, type checking and CI.
+
+## Repository layout
+
+- `src/`: shared domain models, services and pipeline
 - `backend/`: FastAPI API server
-- `frontend/`: React + TypeScript + Tailwind UI
+- `frontend/`: React UI
+- `prompts/`: LLM prompt templates
+- `infra/`, `scripts/`: Azure infrastructure and deploy scripts
 
-There is no legacy Streamlit UI anymore — it was removed once the
-FastAPI + React app reached feature parity; `backend/` + `frontend/` is the
-only app.
+## More
 
-## Prerequisites
-
-- Python 3.13 (pinned by `.python-version`), managed via Poetry (`pyproject.toml` + `poetry.lock`)
-- Node.js 18+
-- API key: `OPENAI_API_KEY` (OpenAI only — no other LLM provider is used)
-
-Create a root `.env` file:
-
-```bash
-OPENAI_API_KEY=your_key
-```
-
-## Run
-
-```bash
-poetry install --with backend,dev
-cd frontend && npm install && cd ..
-poetry run honcho start   # backend + frontend together, via the repo-root Procfile
-```
-
-Backend on `http://127.0.0.1:8000`, frontend on `http://localhost:5173`
-(note: `localhost`, not `127.0.0.1` — Vite's dev config binds to the
-hostname specifically). Ctrl+C once stops both. See `CLAUDE.md`'s "Quick
-Start Commands" for the two-terminal alternative if you want the servers
-separate, and `backend/README.md` / `frontend/README.md` for
-per-app detail.
-
-`STORAGE_BACKEND` defaults to `local` (filesystem + SQLite, zero Azure setup
-needed) — the same code path production runs, just backed by
-`azure` (Blob Storage + Azure SQL) there instead. See
-`docs/paper-podcasts/specs/2026-08-15-paper-podcasts-deployment.md`
-(workspace root) for the full design.
-
-## Checks
-
-```bash
-poetry run pytest -v
-poetry run ruff check . && poetry run ruff format --check .
-poetry run pyright
-cd frontend && npm test && npm run lint && npm run build
-```
-
-All of these also run in GitHub Actions (`.github/workflows/ci.yml`) on every pull request and every push to `main`, as four checks: `backend-test`, `backend-lint`, `frontend-test`, and `frontend-checks`.
-
-## Core Capabilities
-
-- Search papers on arXiv
-- Enqueue processing jobs with concurrent workers (up to configured limit) and queue overflow
-- Track live job status/progress
-- Browse processed library with filters
-- Rich summary rendering per paper, auto-fetched as it appears in the
-  library (no separate "view" step); reading the full paper happens via
-  "Open on arXiv", not an in-app viewer
-- Play generated audio and mark listened/unlistened
-
-## Notes
-
-- Artifacts are always written to local disk first, then durably persisted
-  through the active `ArtifactStore` on top of that — a same-path no-op for
-  `local`, an actual Blob Storage upload for `azure`. See `backend/README.md`
-  for the full explanation (this matters because the deployed container's
-  local disk is ephemeral; Blob Storage is what actually survives there).
-- Backend security controls (optional API key, rate limiting, HTTPS
-  controls) are documented in `backend/README.md`. There is no CORS
-  middleware — see that file's "No CORS middleware" note for why.
+- [Run it locally and run the checks](docs/development.md)
+- [Deployment](deployment/README.md)
