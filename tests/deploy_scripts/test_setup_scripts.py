@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from conftest import FakeAz
 
 SHA = "c" * 40
@@ -39,10 +42,18 @@ def test_both_federated_credentials_trust_only_the_production_environment(
         assert "refs/heads" not in call
 
 
+def _environment_body(fake_az: FakeAz) -> dict[str, object]:
+    """The JSON the script sends to `PUT .../environments/production`."""
+    return json.loads(Path(f"{fake_az.log}.gh-body").read_text())
+
+
 def test_production_environment_admits_only_main(fake_az: FakeAz) -> None:
     result = fake_az.run("scripts/setup-github-deploy.sh")
     assert result.returncode == 0, result.stderr
-    assert any("custom_branch_policies]=true" in c for c in fake_az.gh_calls)
+    assert _environment_body(fake_az)["deployment_branch_policy"] == {
+        "protected_branches": False,
+        "custom_branch_policies": True,
+    }
     assert any("-X POST" in c and "name=main" in c for c in fake_az.gh_calls)
 
     again = fake_az.run(
@@ -51,6 +62,20 @@ def test_production_environment_admits_only_main(fake_az: FakeAz) -> None:
     assert again.returncode == 0, again.stderr
     posts = [c for c in fake_az.gh_calls if "-X POST" in c]
     assert len(posts) == 1  # the second run found the policy and added nothing
+
+
+def test_production_environment_requires_the_repo_owner_as_reviewer(
+    fake_az: FakeAz,
+) -> None:
+    # Every deploy then waits for the owner's approval in GitHub, and no admin
+    # can bypass the gate.
+    result = fake_az.run("scripts/setup-github-deploy.sh")
+    assert result.returncode == 0, result.stderr
+    assert "api users/Fredheda --jq .id" in fake_az.gh_calls
+    body = _environment_body(fake_az)
+    assert body["reviewers"] == [{"type": "User", "id": 77542239}]
+    assert body["prevent_self_review"] is False
+    assert body["can_admins_bypass"] is False
 
 
 def test_azure_ids_are_stored_as_secrets_not_variables(fake_az: FakeAz) -> None:

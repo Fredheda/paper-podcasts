@@ -21,8 +21,10 @@
 #      in the `production` environment of this repo. The build runs inside the
 #      Deploy workflow, so it uses the same environment subject.
 #   4. Creates the `production` GitHub environment, restricted to jobs running
-#      on the main branch (a branch author cannot edit their way around it),
-#      and stores the Azure IDs the workflow reads as repo SECRETS:
+#      on the main branch (a branch author cannot edit their way around it)
+#      and gated by the repo owner as required reviewer (every deploy waits
+#      for his approval in GitHub), and stores the Azure IDs the workflow
+#      reads as repo SECRETS:
 #      AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_BUILD_CLIENT_ID,
 #      AZURE_DEPLOY_CLIENT_ID. They are identifiers, not credentials; a secret
 #      is used so GitHub masks the value in run logs (this repo is public).
@@ -110,11 +112,20 @@ ensure_federated_credential "$DEPLOY_ID" github-production "$SUBJECT"
 # Both identities trust any job that runs in the `production` environment,
 # whatever branch it runs on, and the `main`-only check inside deploy.yml is in
 # a file any branch author can edit. So the environment itself only admits
-# jobs from main: GitHub enforces this outside the workflow file.
-gh api -X PUT "repos/$GH_REPO/environments/production" \
-  -F 'deployment_branch_policy[protected_branches]=false' \
-  -F 'deployment_branch_policy[custom_branch_policies]=true' \
-  --jq '"environment " + .name + ": ensured"'
+# jobs from main: GitHub enforces this outside the workflow file. The repo
+# owner is its required reviewer, so every deploy waits for his approval in
+# GitHub (the run shows `waiting`) and no admin can bypass that. Required
+# reviewers need a public repo on the Free plan.
+OWNER_ID=$(gh api "users/${GH_REPO%%/*}" --jq .id)
+gh api -X PUT "repos/$GH_REPO/environments/production" --input - \
+  --jq '"environment " + .name + ": ensured"' <<EOF
+{
+  "deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true},
+  "reviewers": [{"type": "User", "id": $OWNER_ID}],
+  "prevent_self_review": false,
+  "can_admins_bypass": false
+}
+EOF
 policies=$(gh api "repos/$GH_REPO/environments/production/deployment-branch-policies" \
   --jq '.branch_policies[].name')
 if grep -qx main <<<"$policies"; then

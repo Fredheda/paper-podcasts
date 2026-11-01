@@ -5,6 +5,7 @@ name: Deploy
 # already-built commit builds nothing), then rolls ca-podcasts-agent and
 # ca-podcasts-web to them. CI never builds.
 # Run it from the Actions tab or: gh workflow run deploy.yml --ref main
+# The run waits in the production environment until the repo owner approves it.
 # Rollback is the same button with an older commit SHA.
 on:
   workflow_dispatch:

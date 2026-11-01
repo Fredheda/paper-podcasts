@@ -83,7 +83,9 @@ echo '{"value":"fake-token"}'
 """
 
 # Stands in for the GitHub CLI. Listing the environment's branch policies
-# prints the names in FAKE_POLICY_NAMES, as the script's --jq filter would.
+# prints the names in FAKE_POLICY_NAMES, as the script's --jq filter would. A
+# user lookup prints the id 77542239. A request body given on stdin
+# (`--input -`) is kept in `$FAKE_LOG.gh-body`.
 FAKE_GH = r"""#!/usr/bin/env bash
 echo "$*" >> "$FAKE_LOG.gh"
 case "$*" in
@@ -91,6 +93,8 @@ case "$*" in
     case "$*" in *"-X POST"*) exit 0 ;; esac
     printf '%s' "${FAKE_POLICY_NAMES:-}"
     exit 0 ;;
+  *" users/"*) echo 77542239; exit 0 ;;
+  *"--input -"*) cat >> "$FAKE_LOG.gh-body"; exit 0 ;;
 esac
 exit 0
 """
