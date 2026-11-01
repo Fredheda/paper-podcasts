@@ -1,0 +1,128 @@
+name: Security
+
+# Pull requests and a weekly run; a merge to main starts nothing. gitleaks and
+# workflow-lint run on every push to a PR, draft or not. The other scans run
+# when the PR is marked ready, on the weekly schedule and on demand
+# (`gh workflow run security.yml --ref main`); the weekly and on-demand runs
+# also scan the full history, and workflow-lint is PR-only. Job ids are stable:
+# the required-checks ruleset refers to them.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  # Advisories appear without any code change, so the dependency audits also
+  # run weekly.
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+# A new push to the same PR cancels the run that is still going. Scheduled
+# runs are never cancelled.
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Blocks the PR. Runs the pinned gitleaks image directly: the gitleaks
+  # action needs a license key for organization repos.
+  gitleaks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # PRs scan only the commits they add; the weekly run scans the whole
+      # history.
+      - name: Scan for secrets
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          log_opts=()
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            log_opts=(--log-opts="${BASE_SHA}..${HEAD_SHA}")
+          fi
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git /repo --redact --no-banner --verbose "${log_opts[@]}"
+
+  # Blocks the PR. Lints the workflow files with the pinned actionlint image.
+  workflow-lint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Lint workflows
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 \
+            -color
+
+  # Advisory on PRs (a new advisory against an old dependency must not fail an
+  # unrelated PR); the weekly run fails visibly.
+  pip-audit:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Poetry
+        run: pipx install "poetry>=2.0,<3.0"
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+          cache: poetry
+      - run: poetry install --with backend --no-interaction
+      - run: poetry run pip install pip-audit==2.10.1
+      - name: Audit Poetry environment
+        run: poetry run pip-audit --local
+
+  # Same behavior as pip-audit, for the production dependencies of the SPA.
+  npm-audit:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Audit production dependencies
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  # HIGH severity only: bandit's lower levels are mostly noise for this code.
+  bandit:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+      # Same interpreter as the code under scan (3.13), not pipx's default.
+      - run: pipx run --python "$(which python)" bandit==1.9.4 -r src backend scripts -lll
+
+  # Findings appear in the repo's Security tab, not as a failing check.
+  codeql:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: python,javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:all
