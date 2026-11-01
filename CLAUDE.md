@@ -24,8 +24,7 @@ Open PRs as drafts, run `./scripts/ci-local.sh`, then `gh pr ready`; address
 every automated review comment in one batched push. The loop is defined in
 "Ways of working" in the root `CLAUDE.md`.
 
-**Response style:** use the `caveman` skill for responses in this repo —
-invoke it before replying, not just when asked.
+**Response style:** Use the `caveman` skill. Talk terse at all times, with or without the skill: chat, Jira comments, GitHub PR and issue text, commits, specs, plans, docs. Short plain sentences, no filler. Keep code, commands and error strings exact. Security warnings and irreversible-action confirmations stay in full clear sentences. Details: workspace `CLAUDE.md`, "Response style".
 
 ## Where to look
 
