@@ -23,6 +23,13 @@ session (no "Generated with Claude Code" footer).
 Open PRs as drafts, run `./scripts/ci-local.sh`, then `gh pr ready`; address
 every automated review comment in one batched push. The loop is defined in
 "Ways of working" in the root `CLAUDE.md`.
+Keep PRs small: one concern, under about 400 hand-written lines (lockfiles,
+fixtures, generated files excluded); split bigger work into one ticket per PR.
+Rule: root `CLAUDE.md`, "Small PRs, one ticket and one plan per PR".
+Build test first: failing test before code; unit tests for logic, offline
+integration tests at the factory seams (`backend/app/state.py`), one e2e per
+user-visible flow, no duplicate coverage. Rule: root `CLAUDE.md`,
+"Test-driven, with sensible coverage across the system".
 
 **Response style:** Use the `caveman` skill. Talk terse at all times, with or without the skill: chat, Jira comments, GitHub PR and issue text, commits, specs, plans, docs. Short plain sentences, no filler. Keep code, commands and error strings exact. Security warnings and irreversible-action confirmations stay in full clear sentences. Details: workspace `CLAUDE.md`, "Response style".
 
@@ -44,7 +51,7 @@ poetry run ruff check . && poetry run ruff format --check . && poetry run pyrigh
 cd frontend && npm test && npm run lint && npm run build
 ```
 
-CI (`.github/workflows/ci.yml`) runs on pull requests only (a push to `main` starts none): `backend` (ruff, pyright, pytest), `frontend` (lint, tests) and the heavy `frontend-build`, which skips drafts. Docs-only changes (Markdown or `docs/`) skip all three. **Before `gh pr ready`, run `./scripts/ci-local.sh`**: it runs every check `ci.yml` does, in the same order (a test keeps the two in step). `.github/workflows/claude-review.yml` posts an AI security review plus a documentation check (flags stale or missing doc updates, or says "Docs: current") on ready PRs, never drafts, and again on every push to them; the owner can also request one by commenting `@claude` (comment-only; the `CLAUDE_CODE_OAUTH_TOKEN` secret expires about 2027-10-24, see `deployment/expirations.md`). `frontend/.env.production` is tracked on purpose (it holds only the public, empty `VITE_API_BASE_URL`, so the SPA calls its own origin); `.gitignore` covers the other env, key and state files (`.env*`, `*.pem`, `*.key`, `local.settings.json`, `terraform.tfstate`, `.azure/`), and the review prompt says not to flag that file. Update both if it ever holds a secret.
+CI (`.github/workflows/ci.yml`) runs on pull requests only (a push to `main` starts none): `backend` (ruff, pyright, pytest), `frontend` (lint, tests) and the heavy `frontend-build`, which skips drafts. Docs-only changes (Markdown or `docs/`) skip all three. **Before `gh pr ready`, run `./scripts/ci-local.sh`**: it runs every check `ci.yml` does, in the same order (a test keeps the two in step). `.github/workflows/claude-review.yml` posts an AI security review plus a documentation check (flags stale or missing doc updates, or says "Docs: current") and advisory size and tests checks ("Size: OK", "Tests: OK" or a finding) on ready PRs, never drafts, and again on every push to them; the owner can also request one by commenting `@claude` (comment-only; the `CLAUDE_CODE_OAUTH_TOKEN` secret expires about 2027-10-24, see `deployment/expirations.md`). `frontend/.env.production` is tracked on purpose (it holds only the public, empty `VITE_API_BASE_URL`, so the SPA calls its own origin); `.gitignore` covers the other env, key and state files (`.env*`, `*.pem`, `*.key`, `local.settings.json`, `terraform.tfstate`, `.azure/`), and the review prompt says not to flag that file. Update both if it ever holds a secret.
 
 Dependabot (`.github/dependabot.yml`) opens weekly version-update PRs, labelled `dependencies`, for `pip` (Poetry, `/`), `npm` (`/frontend`), `github-actions` and the two Dockerfiles (`/backend`, `/frontend`); `cooldown: default-days: 14` holds back versions younger than two weeks. Minor and patch updates are grouped into one PR per ecosystem per run; pip majors stay separate PRs, and npm majors are ignored (they need code changes and are done by hand). Base images stay put: Node majors (frontend) and Python majors and minors (backend, pinned to 3.13) are ignored, patches still arrive. Dependabot alerts and automatic security-update PRs are repo settings, not files. The AI review skips Dependabot PRs.
 
