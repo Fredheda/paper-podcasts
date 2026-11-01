@@ -9,7 +9,7 @@ dependencies = [
     "markitdown[all]==0.1.4",
     "python-statemachine==2.5.0",
     "openai==2.13.0",
-    "python-dotenv==1.2.1",
+    "python-dotenv==1.2.2",
     "pydantic==2.12.5",
 ]
 
