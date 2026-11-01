@@ -12,6 +12,8 @@ gh workflow run deploy.yml --ref main -f sha=<full 40-character commit SHA>
 gh run watch
 ```
 
+The run stops at `waiting` until the owner approves it: Actions, the run, **Review deployments**, approve. The owner is the only required reviewer of `production`, and admins cannot bypass it. An agent never approves a waiting deployment. `gh run watch` keeps polling while the run waits; run it again after the approval.
+
 The workflow (`.github/workflows/deploy.yml`, `production` environment, `main` only):
 
 1. Checks the SHA is a full lowercase commit SHA on `main`, before any Azure login.
@@ -23,7 +25,7 @@ The workflow (`.github/workflows/deploy.yml`, `production` environment, `main` o
 
 ## One-time setup (already done by `scripts/setup-github-deploy.sh`)
 
-The script is idempotent. It creates the managed identities `id-podcasts-gh-build` (`AcrPush`, `Container Registry Tasks Contributor`) and `id-podcasts-gh-deploy` (`AcrPush`, `Container Apps Contributor` on each app, `Managed Identity Operator` on `id-podcasts-acrpull`), a federated credential on each that trusts only jobs in this repo's `production` environment, restricts that environment to `main`, and stores `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_BUILD_CLIENT_ID` and `AZURE_DEPLOY_CLIENT_ID` as repo **secrets** (the repo is public, and secrets are masked in run logs). No credential is stored anywhere.
+The script is idempotent. It creates the managed identities `id-podcasts-gh-build` (`AcrPush`, `Container Registry Tasks Contributor`) and `id-podcasts-gh-deploy` (`AcrPush`, `Container Apps Contributor` on each app, `Managed Identity Operator` on `id-podcasts-acrpull`), a federated credential on each that trusts only jobs in this repo's `production` environment, restricts that environment to `main`, makes the repo owner its required reviewer, and stores `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_BUILD_CLIENT_ID` and `AZURE_DEPLOY_CLIENT_ID` as repo **secrets** (the repo is public, and secrets are masked in run logs). No credential is stored anywhere.
 
 ## Registry clean-up
 
