@@ -23,8 +23,9 @@ session (no "Generated with Claude Code" footer).
 Open PRs as drafts, run `./scripts/ci-local.sh`, then `gh pr ready`; address
 every automated review comment in one batched push. The loop is defined in
 "Ways of working" in the root `CLAUDE.md`.
-Keep PRs small: one concern, under about 400 hand-written lines (lockfiles,
-fixtures, generated files excluded); split bigger work into one ticket per PR.
+Keep PRs small: one concern, up to about 20 changed files and under 5000
+changed lines (lockfiles, fixtures, generated files excluded); split bigger
+work into one ticket per PR.
 Rule: root `CLAUDE.md`, "Small PRs, one ticket and one plan per PR".
 Build test first: failing test before code; unit tests for logic, offline
 integration tests at the factory seams (`backend/app/state.py`), one e2e per
