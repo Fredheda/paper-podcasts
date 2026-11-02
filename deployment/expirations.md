@@ -10,6 +10,7 @@ auto-notifies you.
 |------|---------|---------------------|--------------|
 | **Easy Auth client secret** (Entra app `podcasts-easyauth`) | 2 years from setup — check with the command below | Login breaks for everyone; data/backend unaffected, only sign-in. | Re-run `./scripts/setup-easyauth.sh` — resets the secret, pushes it, restarts the frontend revision. |
 | **`CLAUDE_CODE_OAUTH_TOKEN`** (GitHub repo secret used by `.github/workflows/claude-review.yml`) | About 2027-10-24 | The AI PR review stops posting comments. Nothing else is affected. | Run `claude setup-token`, then `gh secret set CLAUDE_CODE_OAUTH_TOKEN`. If subscription auth is refused, switch the action input to `anthropic_api_key`. |
+| **`pip-audit` ignore `PYSEC-2026-2275`** (`.github/workflows/security.yml`) | Review 2026-12-01 | A known `requests` vuln stays unfixed (local temp-file attack in `extract_zipped_paths`, not called by this app). | Blocked by the `arxiv==2.3.1` pin (`requests<2.33`). Fix is PP-27 (arxiv 4); then bump `requests` to 2.33 or later and drop the `--ignore-vuln` flag in `security.yml` and `CLAUDE.md`. |
 
 Verify the current secret expiry any time:
 ```bash
