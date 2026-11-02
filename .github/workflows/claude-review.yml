@@ -88,11 +88,11 @@ jobs:
             expirations.md), not at the repo root.
 
             **PR size check (every PR, advisory).** A PR should hold one
-            concern and change under about 400 hand-written lines (lockfiles,
-            fixtures and generated files excluded). If it exceeds that or
-            mixes unrelated concerns, say so in one summary line and suggest
-            how to split it. Otherwise say "Size: OK". Never fail the review
-            for size alone.
+            concern, change up to about 20 files (give or take) and fewer than
+            5000 lines (lockfiles, fixtures and generated files excluded). If
+            it exceeds that or mixes unrelated concerns, say so in one
+            summary line and suggest how to split it. Otherwise say
+            "Size: OK". Never fail the review for size alone.
 
             **Tests check (every PR, advisory).** If the PR changes behavior,
             check that it adds or updates tests for that behavior, and that
