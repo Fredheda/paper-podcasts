@@ -1,44 +1,15 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Repo-specific facts for Claude Code. The workspace `CLAUDE.md` (`../CLAUDE.md`) owns everything else: response style, git and worktrees, ways of working (tickets and tiers, production deploys, PR size, test first, the PR loop), tooling, Jira, specs and plans. Keep this file true.
 
-> This repo lives inside a multi-repo workspace with its own root `CLAUDE.md`
-> (`../CLAUDE.md`, one level up) covering workspace-wide conventions — where
-> specs/plans go, the git rule, shared MCP/skill usage. Keep that
-> file's per-project facts about this repo (test-suite status, architecture
-> pointers, etc.) in sync whenever they drift from what's true here.
-
-**Git:** you may run git freely up to a commit, and push a feature branch and
-open a PR. `fetch` and `pull` are fine too (default to `pull --ff-only`). Ask
-first for `rebase`, `reset`, force-push, deleting branches, or anything on
-`main`. Reviewing and merging PRs is the user's alone — hand over the PR URL.
-Other Claude sessions share this workspace: work in your own git worktree,
-never the main checkout. Create one with `git worktree add
-../.worktrees/<repo>-<slug> -b <branch> origin/main` (or the `EnterWorktree`
-tool) and remove it after the PR merges; details in the "Parallel sessions"
-section of the root `CLAUDE.md`. Commit messages are 2 lines at most, with no
-`Co-Authored-By` trailer. Full rule in the root `CLAUDE.md` linked above.
-PR titles and descriptions must not mention Claude Code or link the Claude
-session (no "Generated with Claude Code" footer).
-Open PRs as drafts, run `./scripts/ci-local.sh`, then `gh pr ready`; address
-every automated review comment in one batched push. The loop is defined in
-"Ways of working" in the root `CLAUDE.md`.
-Keep PRs small: one concern, up to about 20 changed files and under 5000
-changed lines (lockfiles, fixtures, generated files excluded); split bigger
-work into one ticket per PR.
-Rule: root `CLAUDE.md`, "Small PRs, one ticket and one plan per PR".
-Build test first: failing test before code; unit tests for logic, offline
-integration tests at the factory seams (`backend/app/state.py`), one e2e per
-user-visible flow, no duplicate coverage. Rule: root `CLAUDE.md`,
-"Test-driven, with sensible coverage across the system".
-
-**Response style:** Use the `caveman` skill. Talk terse at all times, with or without the skill: chat, Jira comments, GitHub PR and issue text, commits, specs, plans, docs. Short plain sentences, no filler. Keep code, commands and error strings exact. Security warnings and irreversible-action confirmations stay in full clear sentences. Details: workspace `CLAUDE.md`, "Response style".
+PR titles and descriptions never mention Claude Code. `./scripts/ci-local.sh` is this repo's local CI script (every `ci.yml` check, in the same order; a test keeps the two in step): green before `gh pr ready`.
 
 ## Where to look
 
 - Run, test and env vars: [`docs/development.md`](docs/development.md)
 - Deploying, operating, expiries: [`deployment/`](deployment/README.md)
 - Overview for readers: [`README.md`](README.md)
+- Specs and plans: the workspace-root `docs/paper-podcasts/` (the 2026-08-15 deployment spec and plan hold the design).
 
 ## Commands
 
@@ -52,9 +23,11 @@ poetry run ruff check . && poetry run ruff format --check . && poetry run pyrigh
 cd frontend && npm test && npm run lint && npm run build
 ```
 
-CI (`.github/workflows/ci.yml`) runs on pull requests only (a push to `main` starts none): `backend` (ruff, pyright, pytest), `frontend` (lint, tests) and the heavy `frontend-build`, which skips drafts. Docs-only changes (Markdown or `docs/`) skip all three. **Before `gh pr ready`, run `./scripts/ci-local.sh`**: it runs every check `ci.yml` does, in the same order (a test keeps the two in step). `.github/workflows/claude-review.yml` posts an AI security review plus a documentation check (flags stale or missing doc updates, or says "Docs: current") and advisory size and tests checks ("Size: OK", "Tests: OK" or a finding) on ready PRs, never drafts, and again on every push to them; the owner can also request one by commenting `@claude` (comment-only; the `CLAUDE_CODE_OAUTH_TOKEN` secret expires about 2027-10-24, see `deployment/expirations.md`). `frontend/.env.production` is tracked on purpose (it holds only the public, empty `VITE_API_BASE_URL`, so the SPA calls its own origin); `.gitignore` covers the other env, key and state files (`.env*`, `*.pem`, `*.key`, `local.settings.json`, `terraform.tfstate`, `.azure/`), and the review prompt says not to flag that file. Update both if it ever holds a secret.
+Tests: unit tests for logic, offline integration tests at the factory seams (`backend/app/state.py`), one e2e per user-visible flow, no duplicate coverage.
 
-Dependabot (`.github/dependabot.yml`) opens weekly version-update PRs, labelled `dependencies`, for `pip` (Poetry, `/`), `npm` (`/frontend`), `github-actions` and the two Dockerfiles (`/backend`, `/frontend`); `cooldown: default-days: 14` holds back versions younger than two weeks. Minor and patch updates are grouped into one PR per ecosystem per run; pip majors stay separate PRs, and npm majors are ignored (they need code changes and are done by hand). Base images stay put: Node majors (frontend) and Python majors and minors (backend, pinned to 3.13) are ignored, patches still arrive. Dependabot alerts and automatic security-update PRs are repo settings, not files. The AI review skips Dependabot PRs.
+CI (`.github/workflows/ci.yml`) runs on pull requests only (a push to `main` starts none): `backend` (ruff, pyright, pytest), `frontend` (lint, tests) and the heavy `frontend-build`, which skips drafts. Docs-only changes (Markdown or `docs/`) skip all three. `.github/workflows/claude-review.yml` posts an AI security review plus a documentation check (flags stale or missing doc updates, or says "Docs: current") and advisory size and tests checks ("Size: OK", "Tests: OK" or a finding) on ready PRs, never drafts or Dependabot PRs, and again on every push to them; the owner can also request one by commenting `@claude` (comment-only; the `CLAUDE_CODE_OAUTH_TOKEN` secret expires about 2027-10-24, see `deployment/expirations.md`). `frontend/.env.production` is tracked on purpose (it holds only the public, empty `VITE_API_BASE_URL`, so the SPA calls its own origin); `.gitignore` covers the other env, key and state files (`.env*`, `*.pem`, `*.key`, `local.settings.json`, `terraform.tfstate`, `.azure/`), and the review prompt says not to flag that file. Update both if it ever holds a secret.
+
+Dependabot (`.github/dependabot.yml`) opens weekly version-update PRs, labelled `dependencies`, for `pip` (Poetry, `/`), `npm` (`/frontend`), `github-actions` and the two Dockerfiles (`/backend`, `/frontend`); `cooldown: default-days: 14` holds back versions younger than two weeks. Minor and patch updates are grouped into one PR per ecosystem per run; pip majors stay separate PRs, and npm majors are ignored (they need code changes and are done by hand). Base images stay put: Node majors (frontend) and Python majors and minors (backend, pinned to 3.13) are ignored, patches still arrive. Dependabot alerts and automatic security-update PRs are repo settings, not files.
 
 Security (`.github/workflows/security.yml`, each job commented) runs on pull requests, weekly and on demand (`gh workflow run security.yml --ref main`), never on a merge to `main`. Required on `main` (ruleset id 11380504, file `.github/rulesets/main-protect.json`): `backend`, `frontend`, `frontend-build`, `gitleaks`, `workflow-lint`, `bandit`; `tests/test_ruleset.py` pins them to the job ids, so rename no job without the file. Apply a change with `gh api -X PUT repos/Fredheda/paper-podcasts/rulesets/11380504 --input .github/rulesets/main-protect.json`, only on the owner's yes (a repo setting). `gitleaks`, `workflow-lint` and `bandit` block; `pip-audit` and `npm-audit` are advisory on PRs and fail the weekly run; `codeql` reports to the Security tab. Locally: `gitleaks git . --redact`, `actionlint`, `pipx run bandit==1.9.4 -r src backend scripts -lll`, `poetry run pip-audit --local --ignore-vuln PYSEC-2026-2275` (dated ignore, see `deployment/expirations.md`), `cd frontend && npm audit --omit=dev --audit-level=high`.
 
@@ -62,7 +35,7 @@ Env vars: `OPENAI_API_KEY` (required, OpenAI is the only provider); `STORAGE_BAC
 
 ## Pipeline
 
-`PaperPipeline` (`src/pipeline/paper_pipeline.py`) runs four services in order: `ArxivService`, `PdfService` (`markitdown`), `LLMService`, `AudioService`. LLM and TTS go through `LLMProvider` / `TTSProvider` abstract classes (only OpenAI implementations exist). To add a provider: subclass in `src/services/llm_providers.py` or `tts_providers.py`, implement `generate()` / `text_to_speech()`, and wire it in `backend/app/state.py`.
+`PaperPipeline` (`src/pipeline/paper_pipeline.py`) runs four services in order: `ArxivService`, `PdfService` (`markitdown`), `LLMService`, `AudioService`. LLM and TTS go through `LLMProvider` / `TTSProvider` abstract classes (only OpenAI implementations exist). To add a provider: subclass in `src/services/llm_providers.py` or `tts_providers.py`, implement `generate()` / `generate_audio()`, and wire it in `backend/app/state.py`.
 
 The status state machine (`python-statemachine`, `src/pipeline/paper_workflow.py`) goes `new → downloading → downloaded → extracting → extracted → summarizing → summarized → generating_audio → audio_generated → completed`, and any stage can go to `failed`. When changing the pipeline:
 
@@ -85,5 +58,4 @@ The status state machine (`python-statemachine`, `src/pipeline/paper_workflow.py
 - No CORS middleware, on purpose: the browser only talks to its own origin, and `frontend/server.js` (prod) or `server.proxy` in `frontend/vite.config.ts` (dev) proxies `/api` and `/health`. Prod backend has internal ingress only.
 - Prompts in `prompts/` use `.format()` placeholders (`summarize_paper.txt`: `{paper_content}`, `{title}`, `{authors}`, `{published}`). The summary prompt asks for HTML, which `frontend/src/App.tsx` renders.
 - Frontend polling pauses after `IDLE_PAUSE_MS` (60s) with no active job so the container apps can scale to zero. Do not remove it.
-- Deploy: production changes only when the owner presses the **Deploy** workflow (main only, builds the chosen SHA's images if missing, rollback = an older SHA; see `deployment/github.md`). Every run waits in GitHub for the owner's approval (`production` requires him as reviewer). Run one only on the owner's explicit yes for that specific deploy, and never approve a waiting deployment. Rule: root `CLAUDE.md`, "Deploy only on the owner's explicit yes for that deploy". `scripts/ship.sh` is the laptop fallback and refuses a dirty tree on purpose. The deploy scripts have offline tests in `tests/deploy_scripts/` (a fake `az`). First request after idle is slow, and the shared serverless SQL DB can return transient 500s after a pause. Both explained in `deployment/local.md` and `deployment/operations.md`.
-- Specs and plans for this repo are in the workspace-root `docs/paper-podcasts/` (the 2026-08-15 deployment spec and plan hold the design).
+- Deploy: production changes only when the owner presses the **Deploy** workflow (main only, builds the chosen SHA's images if missing, rollback = an older SHA; see `deployment/github.md`). Every run waits in GitHub for the owner's approval (`production` requires him as reviewer). `scripts/ship.sh` is the laptop fallback and refuses a dirty tree on purpose. The deploy scripts have offline tests in `tests/deploy_scripts/` (a fake `az`). First request after idle is slow, and the shared serverless SQL DB can return transient 500s after a pause. Both explained in `deployment/local.md` and `deployment/operations.md`.

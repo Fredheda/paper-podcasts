@@ -5,7 +5,7 @@ How to run Paper Podcasts locally, run the checks, and make a change.
 ## Prerequisites
 
 - Python 3.13 (pinned by `.python-version`), managed with Poetry (`pyproject.toml` and `poetry.lock`). There is no `requirements.txt`.
-- Node.js 18+
+- Node 24 (what `frontend/Dockerfile` and CI use)
 - An OpenAI API key. OpenAI is the only LLM and text-to-speech provider.
 
 ## Environment variables
@@ -75,7 +75,7 @@ npm run lint      # eslint
 npm run build     # tsc -b && vite build, which is also the type check
 ```
 
-`./scripts/ci-local.sh` runs all of the above in the order CI does. CI (`.github/workflows/ci.yml`) runs them on pull requests only, as three jobs: `backend`, `frontend` and `frontend-build` (skipped on drafts and, with the others, on docs-only changes).
+`./scripts/ci-local.sh` runs all of the above in the order CI does. Which jobs run on a draft, which once the PR is ready, and the docs-only skip: `CLAUDE.md`, "Commands".
 
 ## Making a change
 
