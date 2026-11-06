@@ -19,6 +19,7 @@ One app (`backend/` FastAPI + `frontend/` React/Vite) wraps the shared pipeline 
 poetry install --with backend,dev && (cd frontend && npm install)
 poetry run honcho start                       # backend :8000 + frontend :5173 (use localhost, not 127.0.0.1)
 poetry run pytest -v                          # offline
+poetry run python -m tests.e2e_backend.launcher   # real app on :8100, arXiv/OpenAI faked, temp storage (browser suite backend)
 poetry run ruff check . && poetry run ruff format --check . && poetry run pyright
 cd frontend && npm test && npm run lint && npm run build
 ```
