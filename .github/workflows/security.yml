@@ -77,8 +77,12 @@ jobs:
           cache: poetry
       - run: poetry install --with backend --no-interaction
       - run: poetry run pip install pip-audit==2.10.1
+      # PYSEC-2026-2275 ignored: blocked by arxiv==2.3.1 pin (requests<2.33);
+      # vuln in requests.utils.extract_zipped_paths, not called;
+      # review 2026-12-01; fix tracked in PP-27. Drop the ignore when
+      # requests is bumped.
       - name: Audit Poetry environment
-        run: poetry run pip-audit --local
+        run: poetry run pip-audit --local --ignore-vuln PYSEC-2026-2275
 
   # Same behavior as pip-audit, for the production dependencies of the SPA.
   npm-audit:
