@@ -73,6 +73,16 @@ def test_dependency_audits_are_advisory_on_prs_only() -> None:
         ), job
 
 
+def test_every_pip_audit_ignore_is_dated_and_explained() -> None:
+    block = job_block("pip-audit")
+    ignores = re.findall(r"--ignore-vuln (\S+)", block)
+    assert ignores == ["PYSEC-2026-2275"]
+    # The comment above the audit step says why, until when and where it is tracked.
+    assert "blocked by arxiv==2.3.1 pin" in block
+    assert re.search(r"review 20\d\d-\d\d-\d\d", block)
+    assert "PP-27" in block
+
+
 def test_scan_scope_and_severity() -> None:
     assert "--omit=dev" in job_block("npm-audit")
     assert "--audit-level=high" in job_block("npm-audit")
