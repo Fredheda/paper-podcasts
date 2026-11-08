@@ -31,7 +31,7 @@ GATE_TIMEOUT_SECONDS = 30.0
 
 
 class Recorder:
-    """Request log and the gate that holds a `slow` chat stream."""
+    """Request log and the gate that holds a slow chat stream or a HOLD summary."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -53,11 +53,12 @@ class Recorder:
 
 
 def scripted_papers() -> List[Paper]:
-    """Three fixed search results; the third one makes the summary step fail."""
+    """Four fixed search results; the third fails the summary step, the fourth waits for the gate."""
     titles = {
         "2501.00001": "Scripted Paper One",
         "2501.00002": "Scripted Paper Two",
         "2501.00003": "FAIL Scripted Paper Three",
+        "2501.00004": "HOLD Scripted Paper Four",
     }
     when = datetime(2025, 1, 1)
     return [
@@ -121,6 +122,8 @@ def _generate(recorder: Recorder) -> Callable[..., str]:
         temperature: float = 0.7,
     ) -> str:
         recorder.record("summary", prompt=prompt)
+        if "HOLD" in prompt:
+            recorder.gate.wait(timeout=GATE_TIMEOUT_SECONDS)
         if "FAIL" in prompt:
             raise RuntimeError("scripted LLM failure")
         return SUMMARY_HTML

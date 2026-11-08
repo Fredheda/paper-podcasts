@@ -32,8 +32,14 @@ def _add_test_routes(app: FastAPI, data_dir: Path, recorder: Recorder) -> None:
         from backend.app.state import state
         from src.services.processing_manager import ProcessingManager
 
+        # Release a held summary or chat stream first, then wait for the old
+        # workers: shutdown() joins each for only 2 s, and one that outlives the
+        # reset would write its paper into the fresh storage.
+        recorder.gate.set()
         if state.processing is not None:
             state.processing.shutdown()
+            for worker in state.processing._workers:
+                worker.join(timeout=15.0)
         papers = data_dir / "papers"
         if papers.exists():
             for child in papers.iterdir():
@@ -63,7 +69,7 @@ def _add_test_routes(app: FastAPI, data_dir: Path, recorder: Recorder) -> None:
 
     @app.post("/__gate/release")
     def release_gate() -> dict[str, bool]:
-        """Let a held `slow` chat stream continue."""
+        """Let a held chat stream or HOLD summary continue."""
         recorder.gate.set()
         return {"ok": True}
 
