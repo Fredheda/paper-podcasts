@@ -95,6 +95,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - run: npm install -g npm@12.2.2 && npm --version
       - name: Audit production dependencies
         working-directory: frontend
         run: npm audit --omit=dev --audit-level=high

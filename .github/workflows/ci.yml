@@ -75,6 +75,7 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - run: npm install -g npm@12.2.2 && npm --version
       # Same flags as frontend/Dockerfile.
       - run: npm ci --ignore-scripts
       - run: npm run lint
@@ -97,5 +98,6 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - run: npm install -g npm@12.2.2 && npm --version
       - run: npm ci --ignore-scripts
       - run: npm run build
