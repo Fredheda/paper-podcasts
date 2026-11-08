@@ -29,7 +29,7 @@ CI (`.github/workflows/ci.yml`) runs on pull requests only, never on a push to `
 
 `frontend/.env.production` is tracked on purpose: it holds only the public, empty `VITE_API_BASE_URL`, so the SPA calls its own origin. `.gitignore` covers the other env, key and state files (`.env*`, `*.pem`, `*.key`, `local.settings.json`, `terraform.tfstate`, `.azure/`), and the review prompt says not to flag that file. Update both if it ever holds a secret.
 
-- **Merging:** the owner merges, except Dependabot patch or minor bumps that touch nothing under `.github/`, and docs-only PRs (only `.md` files, `CLAUDE.md` included, and `docs/`; never `.claude/` or workflows). The coordinator merges those after review, once every CI check passed and, for docs PRs, the automated GitHub review passed. Rules: workspace `CLAUDE.md`, Git.
+- **Merging:** the owner merges, except the bot and docs classes in the workspace `CLAUDE.md` (Git), which the coordinator merges.
 
 Dependabot (`.github/dependabot.yml`) opens weekly PRs labelled `dependencies` for `pip` (Poetry, `/`), `npm` (`/frontend`), `github-actions` and the two Dockerfiles (`/backend`, `/frontend`). `cooldown: default-days: 14` holds back versions younger than two weeks. Minor and patch updates are grouped into one PR per ecosystem per run. Pip majors are separate PRs; npm majors are ignored (they need code changes, done by hand). Base images: Node majors (frontend) and Python majors and minors (backend, pinned to 3.13) are ignored; patches arrive. Dependabot alerts and security-update PRs are repo settings, not files.
 
