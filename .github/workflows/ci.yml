@@ -1,8 +1,8 @@
 name: CI
 
 # Pull requests only: a push to main starts no CI, because the PR already ran
-# it. Draft-first: a draft runs the light jobs; `frontend-build` (the heavy
-# one) and the AI review run once the PR is marked ready. Docs-only changes
+# it. Draft-first: a draft runs the light jobs; `frontend-build` and `e2e` (the
+# heavy ones) and the AI review run once the PR is marked ready. Docs-only changes
 # skip every job below `changes`; a skipped job counts as passed for a
 # required check. Run the same checks locally with scripts/ci-local.sh.
 on:
