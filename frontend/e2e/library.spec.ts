@@ -4,6 +4,8 @@ import {
   backendOnline,
   badge,
   card,
+  listenButton,
+  listenFilter,
   queueSelected,
   resultsCounter,
   searchBox,
@@ -13,7 +15,7 @@ import {
   summaryScripts,
   tab
 } from './selectors';
-import { resetBackend, watchPageErrors } from './support';
+import { queueByApi, resetBackend, watchPageErrors } from './support';
 
 let pageErrors: () => string[];
 
@@ -61,4 +63,24 @@ test('search, queue, process, read and play a paper', async ({ page, request }) 
   });
   expect(ranged.status()).toBe(206);
   expect(ranged.headers()['content-range']).toMatch(/^bytes 0-99\//);
+});
+
+test('listen status survives a reload', async ({ page, request }) => {
+  await queueByApi(request, 'Scripted Paper One');
+  await page.goto('/');
+  await tab(page, 'Library').click();
+  const item = card(page, 'Scripted Paper One');
+  await expect(badge(item, 'completed')).toBeVisible({ timeout: 30_000 });
+
+  await listenButton(item, 'Mark Listened').click();
+  await expect(badge(item, 'listened')).toBeVisible();
+
+  await page.reload();
+  await tab(page, 'Library').click();
+  await expect(badge(card(page, 'Scripted Paper One'), 'listened')).toBeVisible();
+
+  await listenFilter(page).selectOption('listened');
+  await expect(card(page, 'Scripted Paper One')).toBeVisible();
+  await listenFilter(page).selectOption('unlistened');
+  await expect(card(page, 'Scripted Paper One')).toHaveCount(0);
 });
