@@ -53,6 +53,14 @@ cd frontend && npm run dev
 
 There is no CORS middleware, because the browser never talks to the backend directly. In production the web container proxies `/api/*` and `/health` to the backend (`frontend/server.js`). In local development the `server.proxy` setting in `frontend/vite.config.ts` does the same.
 
+## Scripted backend (no keys, no network)
+
+```bash
+poetry run python -m tests.e2e_backend.launcher   # 127.0.0.1:8100
+```
+
+Runs the real routes, queue, pipeline and local storage in a temp directory. Only arXiv search and download, the OpenAI summary and chat calls, and OpenAI text-to-speech are scripted (`tests/e2e_backend/fakes.py`). Test-only routes: `POST /__reset`, `GET /__requests`, `POST /__gate/release`; they exist only on this app, never on `backend.app.main:app`. Point `server.js` at it with `BACKEND_URL=http://127.0.0.1:8100`. Used by the browser suite.
+
 ## Backend API
 
 The routes are in `backend/app/routes/`: `/health`, search and the job queue (`/api/search`, `/api/jobs/enqueue`, `/api/jobs`), the library (`/api/library` and its `content`, `audio` and `listen` sub-routes) and paper chat (`/api/chat/stream`).
