@@ -84,7 +84,7 @@ jobs:
       - name: Audit Poetry environment
         run: poetry run pip-audit --local --ignore-vuln PYSEC-2026-2275
 
-  # Same behavior as pip-audit, for the production dependencies of the SPA.
+  # Same behavior as pip-audit, for all SPA dependencies, dev tooling included.
   npm-audit:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
@@ -96,9 +96,9 @@ jobs:
         with:
           node-version: 24
       - run: npm install -g npm@12.2.2 && npm --version
-      - name: Audit production dependencies
+      - name: Audit dependencies
         working-directory: frontend
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --audit-level=high
 
   # HIGH severity only: bandit's lower levels are mostly noise for this code.
   bandit:

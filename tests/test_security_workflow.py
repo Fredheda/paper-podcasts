@@ -84,7 +84,7 @@ def test_every_pip_audit_ignore_is_dated_and_explained() -> None:
 
 
 def test_scan_scope_and_severity() -> None:
-    assert "--omit=dev" in job_block("npm-audit")
+    assert "--omit=dev" not in job_block("npm-audit")  # dev tooling is audited too
     assert "--audit-level=high" in job_block("npm-audit")
     assert "working-directory: frontend" in job_block("npm-audit")
     bandit = job_block("bandit")
