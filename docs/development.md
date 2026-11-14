@@ -59,7 +59,16 @@ There is no CORS middleware, because the browser never talks to the backend dire
 poetry run python -m tests.e2e_backend.launcher   # 127.0.0.1:8100
 ```
 
-Runs the real routes, queue, pipeline and local storage in a temp directory. Only arXiv search and download, the OpenAI summary and chat calls, and OpenAI text-to-speech are scripted (`tests/e2e_backend/fakes.py`). Test-only routes: `POST /__reset`, `GET /__requests`, `POST /__gate/release`; they exist only on this app, never on `backend.app.main:app`. Point `server.js` at it with `BACKEND_URL=http://127.0.0.1:8100`. Used by the browser suite.
+Runs the real routes, queue, pipeline and local storage in a temp directory. Only arXiv search and download, the OpenAI summary and chat calls, and OpenAI text-to-speech are scripted (`tests/e2e_backend/fakes.py`). Test-only routes: `POST /__reset`, `GET /__requests`, `POST /__gate/release`; they exist only on this app, never on `backend.app.main:app`. Point `server.js` at it with `BACKEND_URL=http://127.0.0.1:8100`. The browser suite starts it itself.
+
+## Browser tests
+
+```bash
+cd frontend && npm run e2e:install   # once: Chromium
+cd frontend && npm run e2e           # builds the bundle, starts the backend (:8100) and server.js (:3100), runs 6 tests
+```
+
+Playwright (`frontend/playwright.config.ts`) drives the production bundle through `server.js` against the scripted backend. Locators live in `frontend/e2e/selectors.ts`; specs never call `.locator()`. Ports: `E2E_BACKEND_PORT`, `E2E_WEB_PORT`. After a failure, open `frontend/playwright-report/index.html` (CI uploads it as an artifact). If a server does not start, run `DEBUG=pw:webserver npm run e2e`.
 
 ## Backend API
 
