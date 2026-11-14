@@ -22,15 +22,15 @@ optional = true
 [tool.poetry.group.backend.dependencies]
 fastapi = "0.162.0"
 uvicorn = {version = "0.54.0", extras = ["standard"]}
-azure-storage-blob = "12.31.0"
-azure-identity = "1.26.0"
+azure-storage-blob = "12.31.1"
+azure-identity = "1.27.0"
 mssql-python = "1.16.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "9.1.1"
+pytest = "9.2.0"
 httpx = "0.28.1"
 honcho = "2.0.0"
-ruff = "0.17.2"
+ruff = "0.17.3"
 pyright = "1.1.414"
 
 [tool.pytest.ini_options]
