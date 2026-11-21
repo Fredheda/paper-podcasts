@@ -1,5 +1,5 @@
 # Build context: repo root  ->  docker build -t podcasts-agent -f backend/Dockerfile .
-FROM python:3.13-slim AS builder
+FROM python:3.13-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90 AS builder
 WORKDIR /app
 # Exact pins. The pip window makes pip take Poetry's own dependencies only from
 # releases at least 14 days old (docs/development.md, "Dependencies").
@@ -10,7 +10,7 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry install --only main,backend --no-interaction --no-ansi
 COPY . .
 
-FROM python:3.13-slim
+FROM python:3.13-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
 WORKDIR /app
 
 # mssql-python bundles its own driver (DDBC) -- these three packages are the
