@@ -9,6 +9,7 @@ backend/Dockerfile together; Dependabot does not see these pins.
 """
 
 import re
+import shlex
 import subprocess
 from collections.abc import Iterable, Iterator
 from pathlib import Path
@@ -28,6 +29,22 @@ NPX_YES = re.compile(r"\bnpx\s+(?:-y|--yes)(?!\w)")
 USES = re.compile(r"^\s*(?:-\s+)?uses:\s+(\S+)(?:\s+#\s*(\S+))?")
 COMMIT_PIN = re.compile(r"[\w./-]+@[0-9a-f]{40}")
 RELEASE = re.compile(r"v\d\S*")
+DIGEST = re.compile(r"@sha256:[0-9a-f]{64}$")
+STAGE = re.compile(r"^FROM\s+(\S+)(?:\s+AS\s+(\S+))?", re.M | re.I)
+DOCKER_RUN_VALUE_FLAGS = {
+    "-v",
+    "--volume",
+    "-w",
+    "--workdir",
+    "-e",
+    "--env",
+    "-u",
+    "--user",
+    "--entrypoint",
+    "--name",
+    "-p",
+    "--publish",
+}
 
 
 def tracked(name: str) -> list[Path]:
@@ -122,3 +139,50 @@ def test_no_tool_is_pip_installed_into_the_project_environment() -> None:
         if "poetry run pip install" in text
     ]
     assert not found, found
+
+
+def dockerfile_bases(dockerfile: Path) -> list[str]:
+    """Return the base images of a Dockerfile's stages, without stage aliases."""
+    stages = STAGE.findall(dockerfile.read_text())
+    aliases = {alias.lower() for _, alias in stages if alias}
+    return [image for image, _ in stages if image.lower() not in aliases]
+
+
+def docker_run_images(workflows: Iterable[Path]) -> Iterator[tuple[str, str]]:
+    """Yield (location, image) for every `docker run` in the workflows."""
+    for where, text in code_lines(workflows):
+        if "docker run" not in text:
+            continue
+        tokens = shlex.split(text.rstrip("\\"))
+        i = tokens.index("run") + 1
+        while tokens[i].startswith("-"):
+            i += 2 if tokens[i] in DOCKER_RUN_VALUE_FLAGS else 1
+        yield where, tokens[i]
+
+
+def test_every_dockerfile_base_image_is_pinned_by_digest() -> None:
+    unpinned = [
+        f"{dockerfile.relative_to(ROOT)}: {image}"
+        for dockerfile in tracked("Dockerfile")
+        for image in dockerfile_bases(dockerfile)
+        if not DIGEST.search(image)
+    ]
+    assert not unpinned, unpinned
+
+
+def test_every_docker_run_image_is_pinned_by_digest() -> None:
+    unpinned = [
+        f"{where}: {image}"
+        for where, image in docker_run_images(WORKFLOWS)
+        if not DIGEST.search(image)
+    ]
+    assert not unpinned, unpinned
+
+
+def test_one_digest_per_base_image_in_a_dockerfile() -> None:
+    for dockerfile in tracked("Dockerfile"):
+        digests: dict[str, set[str]] = {}
+        for image in dockerfile_bases(dockerfile):
+            name, _, digest = image.partition("@")
+            digests.setdefault(name, set()).add(digest)
+        assert all(len(found) == 1 for found in digests.values()), (dockerfile, digests)
