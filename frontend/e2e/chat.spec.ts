@@ -8,6 +8,7 @@ import {
   chatInput,
   chatSend,
   openChat,
+  pageBody,
   tab
 } from './selectors';
 import { fakeRequests, queueByApi, releaseGate, resetBackend, watchPageErrors } from './support';
@@ -69,10 +70,9 @@ test('a broken stream shows the fixed error, never the raw one, and the next que
 
   await ask(page, 'boom');
   await expect(chatError(page, 'The assistant hit an error. Please try again.')).toBeVisible();
-  const body = await page.locator('body').innerText();
-  expect(body).not.toContain('PLANTEDKEY');
-  expect(body).not.toContain('planted.invalid');
-  expect(body).not.toContain('scripted stream failure');
+  for (const raw of ['PLANTEDKEY', 'planted.invalid', 'scripted stream failure']) {
+    await expect(pageBody(page)).not.toContainText(raw);
+  }
 
   await ask(page, 'again');
   await expect(chatAnswer(page, 'Third chunk.')).toBeVisible();
