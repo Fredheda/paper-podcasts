@@ -8,6 +8,7 @@ import config from './playwright.config';
 
 const SERVER = fileURLToPath(new URL('./server.js', import.meta.url));
 const DOCKERFILE = fileURLToPath(new URL('./Dockerfile', import.meta.url));
+const DOCKERIGNORE = fileURLToPath(new URL('./.dockerignore', import.meta.url));
 const hasIpv6Loopback = Object.values(networkInterfaces()).some((addresses) =>
   addresses?.some((entry) => entry.address === '::1')
 );
@@ -49,6 +50,12 @@ describe('frontend server host', () => {
   it('the container image sets HOST to 0.0.0.0', () => {
     const stages = readFileSync(DOCKERFILE, 'utf8').split(/^FROM /m);
     expect(stages[stages.length - 1]).toMatch(/^ENV HOST=0\.0\.0\.0$/m);
+  });
+
+  // `npm run build` runs tsc inside the image; this file imports the Playwright
+  // config, which the image build context leaves out.
+  it('the image build context leaves out this test file', () => {
+    expect(readFileSync(DOCKERIGNORE, 'utf8').split('\n')).toContain('server.test.ts');
   });
 
   it('the Playwright web server sets HOST to 127.0.0.1', () => {
