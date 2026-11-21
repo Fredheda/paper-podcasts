@@ -22,7 +22,7 @@ INSTALL_SOURCES = [
     DOCKERFILE,
     ROOT / "frontend" / "Dockerfile",
 ]
-INSTALL = re.compile(r"\b(?:pip|pipx) install\b")
+INSTALL = re.compile(r"\b(?:pip|pipx) (?:install|inject)\b")
 POETRY_PIN = re.compile(r"poetry==(\d+\.\d+\.\d+)")
 NPX_YES = re.compile(r"\bnpx\s+(?:-y|--yes)(?!\w)")
 USES = re.compile(r"^\s*(?:-\s+)?uses:\s+(\S+)(?:\s+#\s*(\S+))?")
@@ -113,3 +113,12 @@ def test_every_action_is_pinned_by_commit() -> None:
         if not COMMIT_PIN.fullmatch(action) or not RELEASE.fullmatch(release):
             unpinned.append(f"{where}: {text}")
     assert not unpinned, unpinned
+
+
+def test_no_tool_is_pip_installed_into_the_project_environment() -> None:
+    found = [
+        f"{where}: {text}"
+        for where, text in code_lines(WORKFLOWS)
+        if "poetry run pip install" in text
+    ]
+    assert not found, found
