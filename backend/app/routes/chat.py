@@ -14,6 +14,7 @@ from src.services.llm_providers import ChatTurn
 
 from ..arxiv_ids import normalize_arxiv_id
 from ..config import PROMPTS_DIR
+from ..safe_errors import GENERIC_CHAT_ERROR, describe, redact
 from ..state import require_storage, state
 
 logger = logging.getLogger(__name__)
@@ -76,8 +77,8 @@ def stream_chat(payload: ChatStreamRequest) -> StreamingResponse:
                     yield _sse("token", {"text": chunk})
             yield _sse("done", {})
         except Exception as exc:
-            logger.exception("Chat stream failed")
-            yield _sse("error", {"message": str(exc)})
+            logger.error("Chat stream failed: %s", redact(describe(exc)))
+            yield _sse("error", {"message": GENERIC_CHAT_ERROR})
 
     return StreamingResponse(
         event_stream(),
