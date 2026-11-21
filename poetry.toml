@@ -1,0 +1,4 @@
+# Supply-chain cooldown: the solver considers only releases at least 14 days
+# old (same window as Dependabot). `poetry install` from the lock is not affected.
+[solver]
+min-release-age = 14

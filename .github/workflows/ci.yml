@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install Poetry
-        run: pipx install "poetry>=2.0,<3.0"
+        run: pipx install poetry==2.5.1
       - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
@@ -116,7 +116,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install Poetry
-        run: pipx install "poetry>=2.0,<3.0"
+        run: pipx install poetry==2.5.1
       - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
