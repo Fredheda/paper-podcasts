@@ -68,7 +68,7 @@ cd frontend && npm run e2e:install   # once: Chromium
 cd frontend && npm run e2e           # builds the bundle, starts the backend (:8100) and server.js (:3100), runs 6 tests
 ```
 
-Playwright (`frontend/playwright.config.ts`) drives the production bundle through `server.js` against the scripted backend. Locators live in `frontend/e2e/selectors.ts`; specs never call `.locator()`. Ports: `E2E_BACKEND_PORT`, `E2E_WEB_PORT`. After a failure, open `frontend/playwright-report/index.html` (CI uploads it as an artifact). If a server does not start, run `DEBUG=pw:webserver npm run e2e`.
+Playwright (`frontend/playwright.config.ts`) drives the production bundle through `server.js` against the scripted backend. Locators live in `frontend/e2e/selectors.ts`; specs never call `.locator()`. Ports: `E2E_BACKEND_PORT`, `E2E_WEB_PORT`. Both servers bind 127.0.0.1; `server.js` does so by default. After a failure, open `frontend/playwright-report/index.html` (CI uploads it as an artifact). If a server does not start, run `DEBUG=pw:webserver npm run e2e`.
 
 ## Backend API
 

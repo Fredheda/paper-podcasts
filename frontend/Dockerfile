@@ -11,6 +11,7 @@ FROM node:24-alpine
 WORKDIR /app
 RUN npm install -g npm@12.2.2 && npm --version
 ENV NODE_ENV=production
+ENV HOST=0.0.0.0
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 COPY --from=builder /app/dist ./dist
