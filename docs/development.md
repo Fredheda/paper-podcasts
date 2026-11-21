@@ -72,7 +72,7 @@ Playwright (`frontend/playwright.config.ts`) drives the production bundle throug
 
 ## Backend API
 
-The routes are in `backend/app/routes/`: `/health`, search and the job queue (`/api/search`, `/api/jobs/enqueue`, `/api/jobs`), the library (`/api/library` and its `content`, `audio` and `listen` sub-routes) and paper chat (`/api/chat/stream`).
+The routes are in `backend/app/routes/`: `/health`, search and the job queue (`/api/search`, `/api/jobs/enqueue`, `/api/jobs`), the library (`/api/library` and its `content`, `audio` and `listen` sub-routes) and paper chat (`/api/chat/stream`). A failed chat stream ends with one fixed error event; the real error is in the server log, redacted.
 
 ## Checks
 
