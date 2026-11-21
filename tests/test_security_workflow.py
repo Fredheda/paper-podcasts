@@ -87,8 +87,9 @@ def test_pip_audit_audits_the_exported_lock_not_an_installed_environment() -> No
     block = job_block("pip-audit")
     assert "pipx inject poetry poetry-plugin-export==" in block
     assert "poetry export --with backend --without-hashes" in block
-    assert "pipx run pip-audit==" in block
-    assert "--no-deps --disable-pip" in block
+    assert re.search(
+        r"^\s*pipx run pip-audit==\S+ -r \S+ --no-deps --disable-pip\b", block, re.M
+    )
     assert "persist-credentials: false" in block
     assert "poetry install" not in block
     assert "pip install" not in block
