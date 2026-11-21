@@ -22,4 +22,8 @@ npm test
 echo "==> frontend-build"
 npm run build
 
+echo "==> e2e"
+npm run e2e:install
+npm run e2e
+
 echo "All CI checks passed."

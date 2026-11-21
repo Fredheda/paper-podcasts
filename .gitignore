@@ -29,6 +29,10 @@ venv/
 npm-debug.log*
 *.log
 
+# Playwright output
+frontend/playwright-report/
+frontend/test-results/
+
 # Editors
 .idea/
 .vscode/

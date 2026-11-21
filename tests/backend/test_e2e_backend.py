@@ -109,6 +109,7 @@ def test_pipeline_runs_through_the_api_without_touching_the_real_data_dir(
             "2501.00001",
             "2501.00002",
             "2501.00003",
+            "2501.00004",
         ]
         assert client.post("/api/search", json={"query": "none"}).json() == {
             "papers": []
@@ -166,3 +167,51 @@ def test_pipeline_runs_through_the_api_without_touching_the_real_data_dir(
 
     assert snapshot(config.DATA_DIR) == real_before
     assert config.DATA_DIR.exists() == real_existed
+
+
+def test_a_hold_paper_stays_active_until_the_gate_is_released(tmp_path: Path) -> None:
+    with e2e_backend(tmp_path) as app, TestClient(app) as client:
+        found = client.post("/api/search", json={"query": "rag"}).json()["papers"]
+        held = found[3]
+        assert held["title"].startswith("HOLD")
+        assert client.post("/api/jobs/enqueue", json={"papers": [held]}).json() == {
+            "queued_count": 1,
+            "skipped_count": 0,
+        }
+
+        def summary_requested() -> bool:
+            return any(r["kind"] == "summary" for r in client.get("/__requests").json())
+
+        wait_for(summary_requested)
+        assert client.get("/api/jobs").json()["jobs"][0]["stage"] != "completed"
+        # Still active: a second enqueue is skipped, deterministically.
+        assert client.post("/api/jobs/enqueue", json={"papers": [held]}).json() == {
+            "queued_count": 0,
+            "skipped_count": 1,
+        }
+
+        assert client.post("/__gate/release").json() == {"ok": True}
+        wait_for(lambda: client.get("/api/jobs").json()["counts"]["completed"] == 1)
+
+
+def test_reset_while_a_hold_paper_runs_leaves_nothing_behind(tmp_path: Path) -> None:
+    with e2e_backend(tmp_path) as app, TestClient(app) as client:
+        found = client.post("/api/search", json={"query": "rag"}).json()["papers"]
+        client.post("/api/jobs/enqueue", json={"papers": [found[3]]})
+        wait_for(
+            lambda: any(
+                r["kind"] == "summary" for r in client.get("/__requests").json()
+            )
+        )
+
+        # The worker is held inside the summary step. Reset must stop it first.
+        assert client.post("/__reset").json() == {"ok": True}
+
+        # A worker that outlived the reset resumes when the gate is released
+        # again (the next test does that), finishes within a fraction of a
+        # second and writes into the fresh storage; wait longer than that.
+        assert client.post("/__gate/release").json() == {"ok": True}
+        time.sleep(1.5)
+        assert client.get("/api/jobs").json()["jobs"] == []
+        assert client.get("/api/library").json() == []
+        assert list((tmp_path / "papers").iterdir()) == []

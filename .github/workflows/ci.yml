@@ -1,8 +1,8 @@
 name: CI
 
 # Pull requests only: a push to main starts no CI, because the PR already ran
-# it. Draft-first: a draft runs the light jobs; `frontend-build` (the heavy
-# one) and the AI review run once the PR is marked ready. Docs-only changes
+# it. Draft-first: a draft runs the light jobs; `frontend-build` and `e2e` (the
+# heavy ones) and the AI review run once the PR is marked ready. Docs-only changes
 # skip every job below `changes`; a skipped job counts as passed for a
 # required check. Run the same checks locally with scripts/ci-local.sh.
 on:
@@ -101,3 +101,47 @@ jobs:
       - run: npm install -g npm@12.2.2 && npm --version
       - run: npm ci --ignore-scripts
       - run: npm run build
+
+  # Heavy: the real production frontend (server.js + dist) against the real
+  # backend with scripted arXiv and OpenAI (tests/e2e_backend). No key, no
+  # network beyond localhost. Skipped on drafts, like frontend-build.
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Poetry
+        run: pipx install "poetry>=2.0,<3.0"
+      - uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+          cache: poetry
+      - run: poetry install --with backend,dev --no-interaction
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm install -g npm@12.2.2 && npm --version
+      - run: npm ci --ignore-scripts
+      # Browser binaries are cached per lockfile (the Playwright version lives in
+      # it); OS packages are installed on every run.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+      - run: npm run e2e:install
+      - run: npm run e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7
