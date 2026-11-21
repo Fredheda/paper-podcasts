@@ -47,3 +47,4 @@ export const chatSend = (page: Page): Locator => page.getByRole('button', { name
 export const chatAnswer = (page: Page, value: string): Locator =>
   page.locator('.chat-markdown').getByText(value);
 export const chatError = (page: Page, message: string): Locator => page.getByText(message);
+export const pageBody = (page: Page): Locator => page.locator('body');

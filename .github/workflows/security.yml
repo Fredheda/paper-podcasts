@@ -69,20 +69,26 @@ jobs:
     continue-on-error: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install Poetry
-        run: pipx install poetry==2.5.1
+        with:
+          persist-credentials: false
+      - name: Install Poetry with the export plugin
+        run: |
+          pipx install poetry==2.5.1
+          pipx inject poetry poetry-plugin-export==1.9.0
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
-          cache: poetry
-      - run: poetry install --with backend --no-interaction
-      - run: poetry run pip install pip-audit==2.10.1
+      # The locked set is audited as exported, not installed: the locked
+      # versions are what ships. --no-deps --disable-pip makes pip-audit read
+      # the list as it is, with no resolution of its own.
       # PYSEC-2026-2275 ignored: blocked by arxiv==2.3.1 pin (requests<2.33);
       # vuln in requests.utils.extract_zipped_paths, not called;
       # review 2026-12-01; fix tracked in PP-27. Drop the ignore when
       # requests is bumped.
-      - name: Audit Poetry environment
-        run: poetry run pip-audit --local --ignore-vuln PYSEC-2026-2275
+      - name: Audit backend (locked set)
+        run: |
+          poetry export --with backend --without-hashes -o "$RUNNER_TEMP/backend.txt"
+          pipx run pip-audit==2.10.1 -r "$RUNNER_TEMP/backend.txt" --no-deps --disable-pip --ignore-vuln PYSEC-2026-2275
 
   # Same behavior as pip-audit, for all SPA dependencies, dev tooling included.
   npm-audit:

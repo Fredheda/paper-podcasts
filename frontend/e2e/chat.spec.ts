@@ -8,6 +8,7 @@ import {
   chatInput,
   chatSend,
   openChat,
+  pageBody,
   tab
 } from './selectors';
 import { fakeRequests, queueByApi, releaseGate, resetBackend, watchPageErrors } from './support';
@@ -60,14 +61,20 @@ test('chat streams through the proxy and is grounded in the stored extract', asy
   expect(system).toContain('Body text of the fixture.');
 });
 
-test('a broken stream shows an error and the next question works', async ({ page, request }) => {
+test('a broken stream shows the fixed error, never the raw one, and the next question works', async ({
+  page,
+  request
+}) => {
   await queueByApi(request, 'Scripted Paper One');
   await openChatOnProcessedPaper(page);
 
   await ask(page, 'boom');
-  await expect(chatError(page, 'scripted stream failure')).toBeVisible();
+  await expect(chatError(page, 'The assistant hit an error. Please try again.')).toBeVisible();
+  for (const raw of ['PLANTEDKEY', 'planted.invalid', 'scripted stream failure']) {
+    await expect(pageBody(page)).not.toContainText(raw);
+  }
 
   await ask(page, 'again');
   await expect(chatAnswer(page, 'Third chunk.')).toBeVisible();
-  await expect(chatError(page, 'scripted stream failure')).toHaveCount(0);
+  await expect(chatError(page, 'The assistant hit an error. Please try again.')).toHaveCount(0);
 });
