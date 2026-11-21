@@ -98,7 +98,7 @@ npm run build     # tsc -b && vite build, which is also the type check
 
 - **Cooldown:** `frontend/.npmrc` and `poetry.toml` make npm and Poetry resolve only versions that are at least 14 days old, the same window as Dependabot. `npm ci` and `poetry install` are not affected: they install what the lockfiles name.
 - **A security fix younger than 14 days** is taken only on the owner's yes for that package and version, with a one-off command and no committed exclusion: `npm install <package>@<version> --min-release-age-exclude=<package>` or `POETRY_SOLVER_MIN_RELEASE_AGE_EXCLUDE=<package> poetry update <package>`.
-- **Exact pins:** Poetry and pip are pinned in `.github/workflows/ci.yml`, `.github/workflows/security.yml` and `backend/Dockerfile`; bump every place together. GitHub Actions are pinned by commit with the release as a comment; Dependabot updates them.
+- **Exact pins:** Poetry and pip are pinned in `.github/workflows/ci.yml`, `.github/workflows/security.yml` and `backend/Dockerfile`; bump every place together. GitHub Actions are pinned by commit with the release as a comment; Dependabot updates them. The `pip-audit` job also pins `poetry-plugin-export` and `pip-audit` exactly in `.github/workflows/security.yml`.
 - `tests/test_supply_chain.py` fails the PR when one of these rules is broken.
 
 ## Making a change

@@ -83,6 +83,18 @@ def test_every_pip_audit_ignore_is_dated_and_explained() -> None:
     assert "PP-27" in block
 
 
+def test_pip_audit_audits_the_exported_lock_not_an_installed_environment() -> None:
+    block = job_block("pip-audit")
+    assert "pipx inject poetry poetry-plugin-export==" in block
+    assert "poetry export --with backend --without-hashes" in block
+    assert re.search(
+        r"^\s*pipx run pip-audit==\S+ -r \S+ --no-deps --disable-pip\b", block, re.M
+    )
+    assert "persist-credentials: false" in block
+    assert "poetry install" not in block
+    assert "pip install" not in block
+
+
 def test_scan_scope_and_severity() -> None:
     assert "--omit=dev" not in job_block("npm-audit")  # dev tooling is audited too
     assert "--audit-level=high" in job_block("npm-audit")
