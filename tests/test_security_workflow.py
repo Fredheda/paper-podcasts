@@ -37,7 +37,9 @@ def test_only_github_owned_actions() -> None:
 
 
 def test_docker_images_are_pinned() -> None:
-    images = re.findall(r"(ghcr\.io/gitleaks/gitleaks|rhysd/actionlint):(\S+)", text())
+    images = re.findall(
+        r"(ghcr\.io/gitleaks/gitleaks|rhysd/actionlint):([^\s@]+)", text()
+    )
     assert {name for name, _ in images} == {
         "ghcr.io/gitleaks/gitleaks",
         "rhysd/actionlint",
