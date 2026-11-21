@@ -8,6 +8,8 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Local runs listen on loopback only; the container image sets HOST=0.0.0.0.
+const HOST = process.env.HOST || '127.0.0.1';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://ca-podcasts-agent';
 
 // Security headers
@@ -38,6 +40,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+function onListening() {
+  const { address, port } = server.address();
+  console.log(`Server is running on ${address}:${port}`);
+}
+
+const server = app.listen(PORT, HOST, onListening);

@@ -40,7 +40,7 @@ export default defineConfig({
       // Build first so the bundle under test is never stale.
       command: 'npm run build && node server.js',
       url: webUrl,
-      env: { PORT: webPort, BACKEND_URL: backendUrl },
+      env: { PORT: webPort, HOST: '127.0.0.1', BACKEND_URL: backendUrl },
       reuseExistingServer: false,
       timeout: 180_000
     }

@@ -3,5 +3,6 @@ dist
 .env
 e2e
 playwright.config.ts
+server.test.ts
 playwright-report
 test-results

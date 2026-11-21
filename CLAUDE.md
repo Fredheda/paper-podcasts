@@ -66,6 +66,7 @@ The status state machine (`python-statemachine`, `src/pipeline/paper_workflow.py
 - Papers are identified on disk by `cleaned_title`, not `arxiv_id`. `arxiv_id` has its version suffix stripped in `__post_init__`; `clean_filename()` caps titles at 200 chars.
 - Listen state (`listen_status` "unlistened" / "listened", `last_listened_at`) is persisted by `state.metadata_service.update_listen_status(...)` from `POST /api/library/{arxiv_id}/listen`, not by a `Paper` method. It is independent of processing status.
 - No CORS middleware, on purpose: the browser only talks to its own origin, and `frontend/server.js` (prod) or `server.proxy` in `frontend/vite.config.ts` (dev) proxies `/api` and `/health`. Prod backend has internal ingress only.
+- `frontend/server.js` listens on `127.0.0.1` unless `HOST` is set; `frontend/Dockerfile` sets `HOST=0.0.0.0` so the container is reachable. Every local server binds loopback only.
 - Chat errors: the stream's `error` event carries only `GENERIC_CHAT_ERROR` (`backend/app/safe_errors.py`); the real error is logged through `redact(describe(exc))`, without a traceback. Never put `str(exc)` or a raw event in a response.
 - Prompts in `prompts/` use `.format()` placeholders (`summarize_paper.txt`: `{paper_content}`, `{title}`, `{authors}`, `{published}`). The summary prompt asks for HTML, which `frontend/src/App.tsx` renders.
 - Frontend polling pauses after `IDLE_PAUSE_MS` (60s) with no active job so the container apps can scale to zero. Do not remove it.
