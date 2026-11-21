@@ -3,6 +3,8 @@
 1. A 14-day install cooldown for npm and Poetry, with no exclusion committed.
 2. No pip or pipx install without an exact version; one Poetry version.
 3. Every GitHub Action pinned by commit, with its release as a comment.
+4. Every Docker image (Dockerfile `FROM`, workflow `docker run`) pinned by
+   `@sha256` digest, one digest per base image per Dockerfile.
 
 To bump Poetry or pip, change the version in every workflow and in
 backend/Dockerfile together; Dependabot does not see these pins.
