@@ -145,7 +145,10 @@ def _stream_chat(recorder: Recorder) -> Callable[..., Iterator[str]]:
         if "slow" in question:
             recorder.gate.wait(timeout=GATE_TIMEOUT_SECONDS)
         if "boom" in question:
-            raise RuntimeError("scripted stream failure")
+            raise RuntimeError(
+                "scripted stream failure: key sk-proj-PLANTEDKEY1234 "
+                "at https://planted.invalid/v1/chat"
+            )
         yield CHAT_CHUNKS[1]
         yield CHAT_CHUNKS[2]
 
