@@ -116,6 +116,15 @@ jobs:
 
             Post code-specific findings as inline comments, then one summary
             comment with `gh pr comment`.
+
+            **Verdict (last line, every review).** End with exactly one line.
+            If no findings are open and the documentation is current, write
+            `Verdict: ready to merge`. Otherwise write
+            `Verdict: changes requested (N open)`, where N counts findings that
+            are still unresolved in the current diff, followed by those
+            findings as `file:line` references. On a re-review after fixes,
+            judge the current state only; do not repeat findings that are now
+            fixed.
           claude_args: |
             --max-turns 30
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
