@@ -51,7 +51,6 @@ def test_docker_images_are_pinned() -> None:
 def test_least_privilege() -> None:
     body = text()
     assert re.search(r"^permissions:\n  contents: read\n", body, re.M)
-    # security-events is requested by the codeql job only.
     assert body.count("security-events: write") == 1
     assert "security-events: write" in job_block("codeql")
 
@@ -79,7 +78,6 @@ def test_every_pip_audit_ignore_is_dated_and_explained() -> None:
     block = job_block("pip-audit")
     ignores = re.findall(r"--ignore-vuln (\S+)", block)
     assert ignores == ["PYSEC-2026-2275"]
-    # The comment above the audit step says why, until when and where it is tracked.
     assert "blocked by arxiv==2.3.1 pin" in block
     assert re.search(r"review 20\d\d-\d\d-\d\d", block)
     assert "PP-27" in block
@@ -98,7 +96,7 @@ def test_pip_audit_audits_the_exported_lock_not_an_installed_environment() -> No
 
 
 def test_scan_scope_and_severity() -> None:
-    assert "--omit=dev" not in job_block("npm-audit")  # dev tooling is audited too
+    assert "--omit=dev" not in job_block("npm-audit")
     assert "--audit-level=high" in job_block("npm-audit")
     assert "working-directory: frontend" in job_block("npm-audit")
     bandit = job_block("bandit")

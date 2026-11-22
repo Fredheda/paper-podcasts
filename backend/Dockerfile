@@ -15,7 +15,7 @@ WORKDIR /app
 
 # mssql-python bundles its own driver (DDBC) -- these three packages are the
 # only runtime system dependencies it needs (Kerberos + dynamic loading),
-# per Microsoft's container guidance. Same as Portfolio/backend/Dockerfile.
+# per Microsoft's container guidance.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libltdl7 \
     libkrb5-3 \
