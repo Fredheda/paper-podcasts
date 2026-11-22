@@ -114,6 +114,15 @@ jobs:
             If you find no security issues, say "No security issues found."
             explicitly. Do not invent findings.
 
+            **Verdict (last line, every review).** End with exactly one line.
+            If no findings are open and the documentation is current, write
+            `Verdict: ready to merge`. Otherwise write
+            `Verdict: changes requested (N open)`, where N counts findings that
+            are still unresolved in the current diff, followed by those
+            findings as `file:line` references. On a re-review after fixes,
+            judge the current state only; do not repeat findings that are now
+            fixed.
+
             Post code-specific findings as inline comments, then one summary
             comment with `gh pr comment`.
           claude_args: |
