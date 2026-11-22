@@ -114,9 +114,6 @@ jobs:
             If you find no security issues, say "No security issues found."
             explicitly. Do not invent findings.
 
-            Post code-specific findings as inline comments, then one summary
-            comment with `gh pr comment`.
-
             **Verdict (last line, every review).** End with exactly one line.
             If no findings are open and the documentation is current, write
             `Verdict: ready to merge`. Otherwise write
@@ -125,6 +122,9 @@ jobs:
             findings as `file:line` references. On a re-review after fixes,
             judge the current state only; do not repeat findings that are now
             fixed.
+
+            Post code-specific findings as inline comments, then one summary
+            comment with `gh pr comment`.
           claude_args: |
             --max-turns 30
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
